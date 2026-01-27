@@ -48,6 +48,7 @@ const App: React.FC = () => {
   const [reschedulingId, setReschedulingId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminPassword, setAdminPassword] = useState<string>('admin123');
+  const [profileId, setProfileId] = useState<string | undefined>(undefined);
   const [darkMode, setDarkMode] = useState(false);
 
   // Dark mode Logic
@@ -125,6 +126,7 @@ const App: React.FC = () => {
       // 5. Fetch Studio Profile
       const { data: profileData } = await supabase.from('profiles').select('*').single();
       if (profileData) {
+        setProfileId(profileData.id);
         setStudio(prev => ({
           ...prev,
           name: profileData.name || prev.name,
@@ -441,7 +443,7 @@ const App: React.FC = () => {
     setStudio(updatedStudio);
     // Persist to Supabase
     const { error } = await supabase.from('profiles').upsert({
-      id: 1, // Using ID 1 for single studio profile
+      id: profileId, // Use the real UUID from the database
       name: updatedStudio.name,
       owner_name: updatedStudio.ownerName,
       whatsapp: updatedStudio.whatsapp,
