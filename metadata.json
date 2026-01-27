@@ -1,0 +1,7 @@
+{
+  "name": "Cílios de Luxo 2026",
+  "description": "Aplicativo premium para estúdio de extensão de cílios, com design sofisticado e agendamento integrado para 2026.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
