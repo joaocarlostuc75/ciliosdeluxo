@@ -33,6 +33,7 @@ interface ProfileProps {
   // Password Management
   adminPassword?: string;
   setAdminPassword?: (pass: string) => void;
+  onUpdateProfile?: (studio: User) => void;
 }
 
 const Profile: React.FC<ProfileProps> = ({
@@ -44,7 +45,8 @@ const Profile: React.FC<ProfileProps> = ({
   onCancelAppointment, onRescheduleAppointment,
   onUpdateBusinessHours, onAddBlock, onDeleteBlock,
   currentYear,
-  adminPassword, setAdminPassword
+  adminPassword, setAdminPassword,
+  onUpdateProfile
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'history' | 'admin_dashboard'>(isAdmin ? 'admin_dashboard' : 'profile');
   const [adminSection, setAdminSection] = useState<'stats' | 'services' | 'clients' | 'agenda' | 'settings'>('stats');
@@ -593,6 +595,16 @@ const Profile: React.FC<ProfileProps> = ({
                       />
                     </div>
                   </div>
+                </div>
+
+                <div className="flex justify-end pt-4">
+                  <button
+                    onClick={() => onUpdateProfile && onUpdateProfile(studio)}
+                    className="px-8 py-4 gold-gradient text-white rounded-2xl text-[10px] uppercase font-black tracking-widest shadow-lg hover:shadow-gold/40 transition-all transform active:scale-95 flex items-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-sm">save</span>
+                    Salvar Alterações
+                  </button>
                 </div>
 
                 {/* Password Change Section */}

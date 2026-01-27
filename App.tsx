@@ -182,13 +182,11 @@ const App: React.FC = () => {
 
 
   const [client, setClient] = useState<User>({
-    name: 'Maria Valentina',
-    whatsapp: '11987654321',
+    name: '',
+    whatsapp: '',
     address: '',
-    email: 'maria.v@exemplo.com',
-    appointments: [
-      { id: 'h1', serviceId: 'volume-brasileiro', serviceName: 'Volume Brasileiro', date: currentDay + 5, month: currentMonthName, time: '15:30', status: 'upcoming', price: 'R$ 130,00', clientName: 'Maria Valentina', clientWhatsapp: '11987654321' },
-    ]
+    email: '',
+    appointments: []
   });
 
   const selectedService = services.find(s => s.id === selectedServiceId) || null;
@@ -437,6 +435,31 @@ const App: React.FC = () => {
     }
   };
 
+
+
+  const handleUpdateProfile = async (updatedStudio: User) => {
+    setStudio(updatedStudio);
+    // Persist to Supabase
+    const { error } = await supabase.from('profiles').upsert({
+      id: 1, // Using ID 1 for single studio profile
+      name: updatedStudio.name,
+      owner_name: updatedStudio.ownerName,
+      whatsapp: updatedStudio.whatsapp,
+      address: updatedStudio.address,
+      email: updatedStudio.email,
+      avatar_url: updatedStudio.image,
+      history: updatedStudio.history,
+      mission: updatedStudio.mission
+    });
+
+    if (error) {
+      console.error("Error updating profile:", error);
+      alert("Erro ao salvar perfil.");
+    } else {
+      alert("Perfil atualizado com sucesso!");
+    }
+  };
+
   const renderPage = () => {
     switch (currentPage) {
       case Page.SPLASH:
@@ -509,6 +532,7 @@ const App: React.FC = () => {
             // Password Management
             adminPassword={adminPassword}
             setAdminPassword={setAdminPassword}
+            onUpdateProfile={handleUpdateProfile}
           />
         );
       case Page.ADMIN_LOGIN:
