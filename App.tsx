@@ -136,10 +136,11 @@ const App: React.FC = () => {
             image: profileData.avatar_url || prev.image
           }));
         }
-      };
+      }
+    };
 
-      fetchData();
-    }, []);
+    fetchData();
+  }, []);
 
   // Generate available days
   useEffect(() => {
