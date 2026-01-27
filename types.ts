@@ -49,6 +49,7 @@ export interface Client {
   image?: string;
   totalSpent: number;
   lastVisit?: string;
+  notes?: string;
 }
 
 export interface BusinessHours {

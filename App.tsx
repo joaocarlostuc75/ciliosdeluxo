@@ -70,7 +70,7 @@ const App: React.FC = () => {
         setServices(servicesData.map(s => ({
           id: s.id,
           name: s.name,
-          price: s.price,
+          price: typeof s.price === 'number' ? `R$ ${s.price.toFixed(2).replace('.', ',')}` : s.price,
           description: s.description || '',
           longDescription: s.long_description || '',
           duration: s.duration || '',
@@ -121,21 +121,34 @@ const App: React.FC = () => {
           status: a.status as any,
           price: a.price
         })));
-        // 5. Fetch Studio Profile
-        const { data: profileData } = await supabase.from('profiles').select('*').single();
-        if (profileData) {
-          setStudio(prev => ({
-            ...prev,
-            name: profileData.name || prev.name,
-            ownerName: profileData.owner_name || prev.ownerName,
-            whatsapp: profileData.whatsapp || prev.whatsapp,
-            address: profileData.address || prev.address,
-            email: profileData.email || prev.email,
-            history: profileData.history || prev.history,
-            mission: profileData.mission || prev.mission,
-            image: profileData.avatar_url || prev.image
-          }));
-        }
+      }
+      // 5. Fetch Studio Profile
+      const { data: profileData } = await supabase.from('profiles').select('*').single();
+      if (profileData) {
+        setStudio(prev => ({
+          ...prev,
+          name: profileData.name || prev.name,
+          ownerName: profileData.owner_name || prev.ownerName,
+          whatsapp: profileData.whatsapp || prev.whatsapp,
+          address: profileData.address || prev.address,
+          email: profileData.email || prev.email,
+          history: profileData.history || prev.history,
+          mission: profileData.mission || prev.mission,
+          image: profileData.avatar_url || prev.image
+        }));
+      }
+
+      // 6. Fetch Clients
+      const { data: clientsData } = await supabase.from('clients').select('*');
+      if (clientsData) {
+        setClients(clientsData.map(c => ({
+          id: c.id,
+          name: c.name,
+          whatsapp: c.whatsapp,
+          email: '', // Not in DB yet, default empty
+          totalSpent: 0, // Calculated on frontend for now
+          notes: c.notes
+        })));
       }
     };
 
@@ -185,15 +198,30 @@ const App: React.FC = () => {
     setCurrentPage(Page.SERVICE_DETAILS);
   };
 
+  // Helper to parse duration string to minutes (e.g., "2h" -> 120, "1h 30m" -> 90)
+  const parseDurationToMinutes = (durationStr: string): number => {
+    let minutes = 0;
+    const hoursMatch = durationStr.match(/(\d+)\s*h/i);
+    const minsMatch = durationStr.match(/(\d+)\s*m/i);
+    if (hoursMatch) minutes += parseInt(hoursMatch[1]) * 60;
+    if (minsMatch) minutes += parseInt(minsMatch[1]);
+    return minutes || 60; // Default to 60 if parsing fails
+  };
+
   // CRUD Handlers
   const handleUpdateService = async (updated: Service) => {
     setServices(prev => prev.map(s => s.id === updated.id ? updated : s));
+
+    const numericPrice = parseFloat(updated.price.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+    const durationMins = parseDurationToMinutes(updated.duration);
+
     await supabase.from('services').update({
       name: updated.name,
-      price: updated.price,
+      price: numericPrice,
       description: updated.description,
       long_description: updated.longDescription,
       duration: updated.duration,
+      duration_minutes: durationMins,
       maintenance: updated.maintenance,
       image_url: updated.image
     }).eq('id', updated.id);
@@ -205,16 +233,33 @@ const App: React.FC = () => {
   };
 
   const handleAddService = async (service: Service) => {
-    const { data } = await supabase.from('services').insert({
+    const numericPrice = parseFloat(service.price.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+    const durationMins = parseDurationToMinutes(service.duration);
+
+    const { data, error } = await supabase.from('services').insert({
       name: service.name,
-      price: service.price,
+      price: numericPrice,
       description: service.description,
       long_description: service.longDescription,
       duration: service.duration,
+      duration_minutes: durationMins,
       maintenance: service.maintenance,
       image_url: service.image
     }).select().single();
-    if (data) setServices(prev => [...prev, { ...service, id: data.id }]);
+
+    if (error) {
+      console.error("Error adding service:", error);
+      alert("Erro ao adicionar serviço.");
+      return;
+    }
+
+    if (data) {
+      setServices(prev => [...prev, {
+        ...service,
+        id: data.id,
+        price: `R$ ${numericPrice.toFixed(2).replace('.', ',')}`
+      }]);
+    }
   };
 
   const handleUpdateAppointment = async (updated: Appointment) => {
@@ -255,8 +300,7 @@ const App: React.FC = () => {
     await supabase.from('appointments').delete().eq('id', id);
   };
 
-  const handleUpdateClient = (updated: Client) => setClients(prev => prev.map(c => c.id === updated.id ? updated : c));
-  const handleDeleteClient = (id: string) => setClients(prev => prev.filter(c => c.id !== id));
+
 
   const handleUpdateBusinessHours = async (hours: any[]) => {
     setStudio(prev => ({ ...prev, businessHours: hours }));
@@ -266,6 +310,38 @@ const App: React.FC = () => {
         is_open: h.isOpen,
         slots: h.slots
       });
+    }
+  };
+
+  const handleUpdateClient = async (updated: Client) => {
+    setClients(prev => prev.map(c => c.id === updated.id ? updated : c));
+    await supabase.from('clients').update({
+      name: updated.name,
+      whatsapp: updated.whatsapp,
+      notes: (updated as any).notes // Cast as any if notes is not in interface, check types
+    }).eq('id', updated.id);
+  };
+
+  const handleDeleteClient = async (id: string) => {
+    setClients(prev => prev.filter(c => c.id !== id));
+    await supabase.from('clients').delete().eq('id', id);
+  };
+
+  const handleAddClient = async (newClient: Client) => {
+    const { data, error } = await supabase.from('clients').insert({
+      name: newClient.name,
+      whatsapp: newClient.whatsapp,
+      notes: (newClient as any).notes
+    }).select().single();
+
+    if (error) {
+      console.error("Error adding client:", error);
+      alert("Erro ao adicionar cliente.");
+      return;
+    }
+
+    if (data) {
+      setClients(prev => [...prev, { ...newClient, id: data.id }]);
     }
   };
 
@@ -423,6 +499,7 @@ const App: React.FC = () => {
             onDeleteAppointment={handleDeleteAppointment}
             onUpdateClient={handleUpdateClient}
             onDeleteClient={handleDeleteClient}
+            onAddClient={handleAddClient}
             onCancelAppointment={handleCancelAppointment}
             onRescheduleAppointment={handleRescheduleAppointment}
             onUpdateBusinessHours={handleUpdateBusinessHours}

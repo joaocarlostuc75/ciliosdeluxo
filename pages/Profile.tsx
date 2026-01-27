@@ -23,6 +23,7 @@ interface ProfileProps {
   onDeleteAppointment: (id: string) => void;
   onUpdateClient: (c: Client) => void;
   onDeleteClient: (id: string) => void;
+  onAddClient: (c: Client) => void;
   onCancelAppointment: (id: string) => void;
   onRescheduleAppointment: (id: string) => void;
   onUpdateBusinessHours: (hours: any[]) => void;
@@ -39,7 +40,7 @@ const Profile: React.FC<ProfileProps> = ({
   availableDays, setAvailableDays, isAdmin, setIsAdmin, onNavigate,
   onUpdateService, onDeleteService, onAddService,
   onUpdateAppointment, onDeleteAppointment,
-  onUpdateClient, onDeleteClient,
+  onUpdateClient, onDeleteClient, onAddClient,
   onCancelAppointment, onRescheduleAppointment,
   onUpdateBusinessHours, onAddBlock, onDeleteBlock,
   currentYear,
@@ -449,7 +450,10 @@ const Profile: React.FC<ProfileProps> = ({
 
             {adminSection === 'clients' && (
               <div className="space-y-6">
-                <h3 className="text-[11px] uppercase tracking-widest text-stone-500 dark:text-stone-200 font-black mb-4">Base de Clientes & Histórico</h3>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-[11px] uppercase tracking-widest text-stone-500 dark:text-stone-200 font-black">Base de Clientes & Histórico</h3>
+                  <button onClick={() => onAddClient({ id: Date.now().toString(), name: 'Novo Cliente', whatsapp: '+55', totalSpent: 0, notes: '' } as any)} className="px-6 py-3 gold-gradient text-white text-[9px] font-black uppercase rounded-full shadow-lg">Novo Cliente</button>
+                </div>
                 {clients.map(c => {
                   const clientApps = allAppointments.filter(app =>
                     app.clientWhatsapp === c.whatsapp || app.clientName === c.name
@@ -467,11 +471,13 @@ const Profile: React.FC<ProfileProps> = ({
                             <span className="material-symbols-outlined text-3xl font-bold">face_retouching_natural</span>
                           </div>
                           <div>
-                            <input className="font-display font-black text-2xl bg-transparent text-stone-900 dark:text-parchment-light outline-none focus:text-gold-dark" value={c.name} onChange={(e) => onUpdateClient({ ...c, name: e.target.value })} />
+                            <input className="font-display font-black text-2xl bg-transparent text-stone-900 dark:text-parchment-light outline-none focus:text-gold-dark w-full" value={c.name} onChange={(e) => onUpdateClient({ ...c, name: e.target.value })} placeholder="Nome do Cliente" />
                             <div className="flex flex-col gap-1 mt-1">
-                              <p className="text-[10px] uppercase tracking-widest text-stone-600 dark:text-stone-300 font-black flex items-center gap-2">
-                                <span className="material-symbols-outlined text-xs text-gold font-bold">smartphone</span> {c.whatsapp}
-                              </p>
+                              <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-xs text-gold font-bold">smartphone</span>
+                                <input className="text-[10px] uppercase tracking-widest text-stone-600 dark:text-stone-300 font-black bg-transparent outline-none" value={c.whatsapp} onChange={(e) => onUpdateClient({ ...c, whatsapp: e.target.value })} placeholder="WhatsApp" />
+                              </div>
+                              <input className="text-[9px] text-stone-400 bg-transparent outline-none w-full" value={c.notes || ''} onChange={(e) => onUpdateClient({ ...c, notes: e.target.value })} placeholder="Notas sobre o cliente..." />
                             </div>
                           </div>
                         </div>
