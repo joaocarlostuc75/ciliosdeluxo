@@ -1,5 +1,6 @@
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { User, Appointment, Page, Service, Client } from '../types';
 
 interface ProfileProps {
@@ -529,188 +530,190 @@ const Profile: React.FC<ProfileProps> = ({
             )}
 
             {adminSection === 'agenda' && (
-              <div className="space-y-8">
-                <div className="flex items-center gap-2 mb-4">
-                  <span className="material-symbols-outlined text-gold text-lg font-bold">calendar_month</span>
-                  <h3 className="text-[11px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Gerenciamento de Agenda</h3>
-                </div>
-
-                {/* Bloqueios de Agenda */}
-                <div>
-                  <div className="flex items-center gap-2 mb-6">
-                    <span className="material-symbols-outlined text-gold/70 text-base">block</span>
-                    <h4 className="text-[10px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Bloqueios de Agenda</h4>
+              <ErrorBoundary sectionName="Agenda">
+                <div className="space-y-8">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="material-symbols-outlined text-gold text-lg font-bold">calendar_month</span>
+                    <h3 className="text-[11px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Gerenciamento de Agenda</h3>
                   </div>
 
-                  <div className="p-8 bg-white/80 dark:bg-luxury-medium/40 rounded-[2.5rem] border border-gold/10">
-                    <p className="text-sm text-stone-600 dark:text-stone-400 mb-6">
-                      Bloqueie horários específicos (férias, feriados, manutenção).
-                    </p>
-
-                    {/* Formulário para adicionar bloqueio */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                      <div className="space-y-2">
-                        <label className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black ml-1">Início</label>
-                        <input
-                          type="datetime-local"
-                          value={newBlockStart}
-                          onChange={(e) => setNewBlockStart(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl border border-gold/20 bg-white dark:bg-luxury-black/50 outline-none focus:border-gold transition-all text-stone-800 dark:text-stone-200"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black ml-1">Fim</label>
-                        <input
-                          type="datetime-local"
-                          value={newBlockEnd}
-                          onChange={(e) => setNewBlockEnd(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl border border-gold/20 bg-white dark:bg-luxury-black/50 outline-none focus:border-gold transition-all text-stone-800 dark:text-stone-200"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black ml-1">Motivo</label>
-                        <input
-                          type="text"
-                          value={newBlockReason}
-                          onChange={(e) => setNewBlockReason(e.target.value)}
-                          className="w-full px-4 py-3 rounded-xl border border-gold/20 bg-white dark:bg-luxury-black/50 outline-none focus:border-gold transition-all text-stone-800 dark:text-stone-200"
-                          placeholder="Ex: Férias, Feriado..."
-                        />
-                      </div>
+                  {/* Bloqueios de Agenda */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-6">
+                      <span className="material-symbols-outlined text-gold/70 text-base">block</span>
+                      <h4 className="text-[10px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Bloqueios de Agenda</h4>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        if (newBlockStart && newBlockEnd && newBlockReason) {
-                          onAddBlock({
-                            id: Date.now().toString(),
-                            startDate: newBlockStart,
-                            endDate: newBlockEnd,
-                            reason: newBlockReason
-                          });
-                          setNewBlockStart('');
-                          setNewBlockEnd('');
-                          setNewBlockReason('');
-                        } else {
-                          alert('Preencha todos os campos do bloqueio.');
-                        }
-                      }}
-                      className="px-6 py-3 gold-gradient text-white rounded-xl text-[10px] uppercase font-black tracking-widest shadow-lg hover:shadow-gold/40 transition-all transform active:scale-95 flex items-center gap-2"
-                    >
-                      <span className="material-symbols-outlined text-sm">add</span>
-                      Adicionar Bloqueio
-                    </button>
+                    <div className="p-8 bg-white/80 dark:bg-luxury-medium/40 rounded-[2.5rem] border border-gold/10">
+                      <p className="text-sm text-stone-600 dark:text-stone-400 mb-6">
+                        Bloqueie horários específicos (férias, feriados, manutenção).
+                      </p>
 
-                    {/* Lista de bloqueios */}
-                    <div className="mt-8 space-y-4">
-                      {studio?.blocks && studio.blocks.length > 0 ? (
-                        (studio.blocks || []).map((block: any) => (
-                          <div key={block.id || Math.random()} className="flex items-center justify-between p-4 bg-white/50 dark:bg-luxury-black/30 rounded-xl border border-gold/10 hover:border-gold/30 transition-colors">
-                            <div>
-                              <p className="font-bold text-sm text-stone-900 dark:text-parchment-light">{block.reason || 'S/ Motivo'}</p>
-                              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-                                {(block.startDate && block.endDate) ? (
-                                  `${new Date(block.startDate).toLocaleString('pt-BR')} → ${new Date(block.endDate).toLocaleString('pt-BR')}`
-                                ) : 'Período inválido'}
-                              </p>
+                      {/* Formulário para adicionar bloqueio */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                        <div className="space-y-2">
+                          <label className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black ml-1">Início</label>
+                          <input
+                            type="datetime-local"
+                            value={newBlockStart}
+                            onChange={(e) => setNewBlockStart(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-gold/20 bg-white dark:bg-luxury-black/50 outline-none focus:border-gold transition-all text-stone-800 dark:text-stone-200"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black ml-1">Fim</label>
+                          <input
+                            type="datetime-local"
+                            value={newBlockEnd}
+                            onChange={(e) => setNewBlockEnd(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-gold/20 bg-white dark:bg-luxury-black/50 outline-none focus:border-gold transition-all text-stone-800 dark:text-stone-200"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black ml-1">Motivo</label>
+                          <input
+                            type="text"
+                            value={newBlockReason}
+                            onChange={(e) => setNewBlockReason(e.target.value)}
+                            className="w-full px-4 py-3 rounded-xl border border-gold/20 bg-white dark:bg-luxury-black/50 outline-none focus:border-gold transition-all text-stone-800 dark:text-stone-200"
+                            placeholder="Ex: Férias, Feriado..."
+                          />
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          if (newBlockStart && newBlockEnd && newBlockReason) {
+                            onAddBlock({
+                              id: Date.now().toString(),
+                              startDate: newBlockStart,
+                              endDate: newBlockEnd,
+                              reason: newBlockReason
+                            });
+                            setNewBlockStart('');
+                            setNewBlockEnd('');
+                            setNewBlockReason('');
+                          } else {
+                            alert('Preencha todos os campos do bloqueio.');
+                          }
+                        }}
+                        className="px-6 py-3 gold-gradient text-white rounded-xl text-[10px] uppercase font-black tracking-widest shadow-lg hover:shadow-gold/40 transition-all transform active:scale-95 flex items-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-sm">add</span>
+                        Adicionar Bloqueio
+                      </button>
+
+                      {/* Lista de bloqueios */}
+                      <div className="mt-8 space-y-4">
+                        {studio?.blocks && studio.blocks.length > 0 ? (
+                          (studio.blocks || []).map((block: any) => (
+                            <div key={block.id || Math.random()} className="flex items-center justify-between p-4 bg-white/50 dark:bg-luxury-black/30 rounded-xl border border-gold/10 hover:border-gold/30 transition-colors">
+                              <div>
+                                <p className="font-bold text-sm text-stone-900 dark:text-parchment-light">{block.reason || 'S/ Motivo'}</p>
+                                <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                                  {(block.startDate && block.endDate) ? (
+                                    `${new Date(block.startDate).toLocaleString('pt-BR')} → ${new Date(block.endDate).toLocaleString('pt-BR')}`
+                                  ) : 'Período inválido'}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => onDeleteBlock(block.id)}
+                                className="text-red-500 hover:text-red-700 transition-colors p-2"
+                              >
+                                <span className="material-symbols-outlined">delete</span>
+                              </button>
                             </div>
-                            <button
-                              onClick={() => onDeleteBlock(block.id)}
-                              className="text-red-500 hover:text-red-700 transition-colors p-2"
-                            >
-                              <span className="material-symbols-outlined">delete</span>
-                            </button>
+                          ))
+                        ) : (
+                          <div className="py-12 text-center">
+                            <span className="material-symbols-outlined text-gold/20 text-5xl mb-2">event_busy</span>
+                            <p className="text-stone-500 dark:text-stone-400 italic text-sm">Nenhum bloqueio configurado.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Horários de Funcionamento */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-6">
+                      <span className="material-symbols-outlined text-gold/70 text-base">schedule</span>
+                      <h4 className="text-[10px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Horários de Funcionamento</h4>
+                    </div>
+
+                    <div className="p-8 bg-white/80 dark:bg-luxury-medium/40 rounded-[2.5rem] border border-gold/10">
+                      <p className="text-sm text-stone-600 dark:text-stone-400 mb-6">
+                        Configure os horários de funcionamento do estabelecimento.
+                      </p>
+
+                      {studio?.businessHours && studio.businessHours.length > 0 ? (
+                        <div className="space-y-4">
+                          {(studio.businessHours || []).map((hours: any, index: number) => (
+                            <div key={index} className="p-4 bg-white/50 dark:bg-luxury-black/30 rounded-xl border border-gold/10">
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-sm">{hours.day || 'Dia'}</span>
+                                {hours.closed ? (
+                                  <span className="text-xs text-red-500 uppercase font-black">Fechado</span>
+                                ) : (
+                                  <span className="text-xs text-gold uppercase font-black">{hours.start || '09:00'} - {hours.end || '18:00'}</span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="py-12 text-center">
+                          <span className="material-symbols-outlined text-gold/20 text-5xl mb-2">schedule</span>
+                          <p className="text-stone-500 dark:text-stone-400 italic text-sm">Configuração de horários ainda não definida.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Agendamentos */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-6">
+                      <span className="material-symbols-outlined text-gold/70 text-base">list_alt</span>
+                      <h4 className="text-[10px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Agendamentos Realizados</h4>
+                    </div>
+
+                    <div className="space-y-4">
+                      {allAppointments && Array.isArray(allAppointments) && allAppointments.length > 0 ? (
+                        [...allAppointments].filter(app => app && app.status !== 'cancelled').sort((a, b) => {
+                          // Sort by date/time (simple sort for this view)
+                          const dateA = a.date || 0;
+                          const dateB = b.date || 0;
+                          return dateB - dateA;
+                        }).map((app: Appointment) => (
+                          <div key={app.id} className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-[2rem] border border-gold/10 shadow-sm flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-xl bg-gold/10 flex flex-col items-center justify-center text-gold">
+                                <span className="text-lg font-black leading-none">{app.date}</span>
+                                <span className="text-[8px] uppercase font-black">{(app.month || 'Mês').substring(0, 3)}</span>
+                              </div>
+                              <div>
+                                <h5 className="font-bold text-stone-900 dark:text-parchment-light">{app.clientName || 'Cliente'}</h5>
+                                <p className="text-[10px] text-stone-500 dark:text-stone-400 uppercase tracking-widest">{app.time || 'Horário'} • {app.serviceName || 'Serviço'}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-display font-black text-gold-dark dark:text-gold-light italic">{app.price}</p>
+                              <span className={`text-[8px] uppercase font-black px-2 py-1 rounded-full border ${app.status === 'upcoming' ? 'border-gold/30 text-gold' : 'border-emerald-500/30 text-emerald-500'}`}>
+                                {app.status === 'upcoming' ? 'Pendente' : 'Concluído'}
+                              </span>
+                            </div>
                           </div>
                         ))
                       ) : (
-                        <div className="py-12 text-center">
+                        <div className="p-12 bg-white/50 dark:bg-luxury-black/30 rounded-[2.5rem] border border-gold/10 text-center">
                           <span className="material-symbols-outlined text-gold/20 text-5xl mb-2">event_busy</span>
-                          <p className="text-stone-500 dark:text-stone-400 italic text-sm">Nenhum bloqueio configurado.</p>
+                          <p className="text-stone-500 dark:text-stone-400 italic text-sm">Nenhum agendamento encontrado.</p>
                         </div>
                       )}
                     </div>
                   </div>
                 </div>
-
-                {/* Horários de Funcionamento */}
-                <div>
-                  <div className="flex items-center gap-2 mb-6">
-                    <span className="material-symbols-outlined text-gold/70 text-base">schedule</span>
-                    <h4 className="text-[10px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Horários de Funcionamento</h4>
-                  </div>
-
-                  <div className="p-8 bg-white/80 dark:bg-luxury-medium/40 rounded-[2.5rem] border border-gold/10">
-                    <p className="text-sm text-stone-600 dark:text-stone-400 mb-6">
-                      Configure os horários de funcionamento do estabelecimento.
-                    </p>
-
-                    {studio?.businessHours && studio.businessHours.length > 0 ? (
-                      <div className="space-y-4">
-                        {(studio.businessHours || []).map((hours: any, index: number) => (
-                          <div key={index} className="p-4 bg-white/50 dark:bg-luxury-black/30 rounded-xl border border-gold/10">
-                            <div className="flex items-center justify-between">
-                              <span className="font-bold text-sm">{hours.day || 'Dia'}</span>
-                              {hours.closed ? (
-                                <span className="text-xs text-red-500 uppercase font-black">Fechado</span>
-                              ) : (
-                                <span className="text-xs text-gold uppercase font-black">{hours.start || '09:00'} - {hours.end || '18:00'}</span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="py-12 text-center">
-                        <span className="material-symbols-outlined text-gold/20 text-5xl mb-2">schedule</span>
-                        <p className="text-stone-500 dark:text-stone-400 italic text-sm">Configuração de horários ainda não definida.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Agendamentos */}
-                <div>
-                  <div className="flex items-center gap-2 mb-6">
-                    <span className="material-symbols-outlined text-gold/70 text-base">list_alt</span>
-                    <h4 className="text-[10px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Agendamentos Realizados</h4>
-                  </div>
-
-                  <div className="space-y-4">
-                    {allAppointments && Array.isArray(allAppointments) && allAppointments.length > 0 ? (
-                      [...allAppointments].filter(app => app && app.status !== 'cancelled').sort((a, b) => {
-                        // Sort by date/time (simple sort for this view)
-                        const dateA = a.date || 0;
-                        const dateB = b.date || 0;
-                        return dateB - dateA;
-                      }).map((app: Appointment) => (
-                        <div key={app.id} className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-[2rem] border border-gold/10 shadow-sm flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-gold/10 flex flex-col items-center justify-center text-gold">
-                              <span className="text-lg font-black leading-none">{app.date}</span>
-                              <span className="text-[8px] uppercase font-black">{(app.month || 'Mês').substring(0, 3)}</span>
-                            </div>
-                            <div>
-                              <h5 className="font-bold text-stone-900 dark:text-parchment-light">{app.clientName || 'Cliente'}</h5>
-                              <p className="text-[10px] text-stone-500 dark:text-stone-400 uppercase tracking-widest">{app.time || 'Horário'} • {app.serviceName || 'Serviço'}</p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-display font-black text-gold-dark dark:text-gold-light italic">{app.price}</p>
-                            <span className={`text-[8px] uppercase font-black px-2 py-1 rounded-full border ${app.status === 'upcoming' ? 'border-gold/30 text-gold' : 'border-emerald-500/30 text-emerald-500'}`}>
-                              {app.status === 'upcoming' ? 'Pendente' : 'Concluído'}
-                            </span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="p-12 bg-white/50 dark:bg-luxury-black/30 rounded-[2.5rem] border border-gold/10 text-center">
-                        <span className="material-symbols-outlined text-gold/20 text-5xl mb-2">event_busy</span>
-                        <p className="text-stone-500 dark:text-stone-400 italic text-sm">Nenhum agendamento encontrado.</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              </ErrorBoundary>
             )}
 
             {adminSection === 'settings' && (
