@@ -16,7 +16,10 @@ import Confirmation from './pages/Confirmation';
 import AdminLogin from './pages/AdminLogin';
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<Page>(Page.SPLASH);
+  const [currentPage, setCurrentPage] = useState<Page>(() => {
+    const hasSeenSplash = localStorage.getItem('hasSeenSplash');
+    return hasSeenSplash === 'true' ? Page.HOME : Page.SPLASH;
+  });
   const [services, setServices] = useState<Service[]>([]);
   const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -465,7 +468,10 @@ const App: React.FC = () => {
   const renderPage = () => {
     switch (currentPage) {
       case Page.SPLASH:
-        return <SplashScreen studio={studio} onStart={() => setCurrentPage(Page.HOME)} />;
+        return <SplashScreen studio={studio} onStart={() => {
+          localStorage.setItem('hasSeenSplash', 'true');
+          setCurrentPage(Page.HOME);
+        }} />;
       case Page.HOME:
         return <Home services={services} onSelectService={navigateToService} />;
       case Page.SERVICE_DETAILS:

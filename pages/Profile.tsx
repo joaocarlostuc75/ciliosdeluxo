@@ -518,6 +518,146 @@ const Profile: React.FC<ProfileProps> = ({
               </div>
             )}
 
+            {adminSection === 'agenda' && (
+              <div className="space-y-8">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="material-symbols-outlined text-gold text-lg font-bold">calendar_month</span>
+                  <h3 className="text-[11px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Gerenciamento de Agenda</h3>
+                </div>
+
+                {/* Bloqueios de Agenda */}
+                <div>
+                  <div className="flex items-center gap-2 mb-6">
+                    <span className="material-symbols-outlined text-gold/70 text-base">block</span>
+                    <h4 className="text-[10px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Bloqueios de Agenda</h4>
+                  </div>
+
+                  <div className="p-8 bg-white/80 dark:bg-luxury-medium/40 rounded-[2.5rem] border border-gold/10">
+                    <p className="text-sm text-stone-600 dark:text-stone-400 mb-6">
+                      Bloqueie horários específicos (férias, feriados, manutenção).
+                    </p>
+
+                    {/* Formulário para adicionar bloqueio */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div className="space-y-2">
+                        <label className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black ml-1">Início</label>
+                        <input
+                          type="datetime-local"
+                          value={newBlockStart}
+                          onChange={(e) => setNewBlockStart(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-gold/20 bg-white dark:bg-luxury-black/50 outline-none focus:border-gold transition-all text-stone-800 dark:text-stone-200"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black ml-1">Fim</label>
+                        <input
+                          type="datetime-local"
+                          value={newBlockEnd}
+                          onChange={(e) => setNewBlockEnd(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-gold/20 bg-white dark:bg-luxury-black/50 outline-none focus:border-gold transition-all text-stone-800 dark:text-stone-200"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black ml-1">Motivo</label>
+                        <input
+                          type="text"
+                          value={newBlockReason}
+                          onChange={(e) => setNewBlockReason(e.target.value)}
+                          className="w-full px-4 py-3 rounded-xl border border-gold/20 bg-white dark:bg-luxury-black/50 outline-none focus:border-gold transition-all text-stone-800 dark:text-stone-200"
+                          placeholder="Ex: Férias, Feriado..."
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        if (newBlockStart && newBlockEnd && newBlockReason) {
+                          onAddBlock({
+                            id: Date.now().toString(),
+                            start: newBlockStart,
+                            end: newBlockEnd,
+                            reason: newBlockReason
+                          });
+                          setNewBlockStart('');
+                          setNewBlockEnd('');
+                          setNewBlockReason('');
+                        } else {
+                          alert('Preencha todos os campos do bloqueio.');
+                        }
+                      }}
+                      className="px-6 py-3 gold-gradient text-white rounded-xl text-[10px] uppercase font-black tracking-widest shadow-lg hover:shadow-gold/40 transition-all transform active:scale-95 flex items-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-sm">add</span>
+                      Adicionar Bloqueio
+                    </button>
+
+                    {/* Lista de bloqueios */}
+                    <div className="mt-8 space-y-4">
+                      {studio.blocks && studio.blocks.length > 0 ? (
+                        studio.blocks.map((block: any) => (
+                          <div key={block.id} className="flex items-center justify-between p-4 bg-white/50 dark:bg-luxury-black/30 rounded-xl border border-gold/10 hover:border-gold/30 transition-colors">
+                            <div>
+                              <p className="font-bold text-sm text-stone-900 dark:text-parchment-light">{block.reason}</p>
+                              <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
+                                {new Date(block.start).toLocaleString('pt-BR')} → {new Date(block.end).toLocaleString('pt-BR')}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => onDeleteBlock(block.id)}
+                              className="text-red-500 hover:text-red-700 transition-colors p-2"
+                            >
+                              <span className="material-symbols-outlined">delete</span>
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="py-12 text-center">
+                          <span className="material-symbols-outlined text-gold/20 text-5xl mb-2">event_busy</span>
+                          <p className="text-stone-500 dark:text-stone-400 italic text-sm">Nenhum bloqueio configurado.</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Horários de Funcionamento */}
+                <div>
+                  <div className="flex items-center gap-2 mb-6">
+                    <span className="material-symbols-outlined text-gold/70 text-base">schedule</span>
+                    <h4 className="text-[10px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Horários de Funcionamento</h4>
+                  </div>
+
+                  <div className="p-8 bg-white/80 dark:bg-luxury-medium/40 rounded-[2.5rem] border border-gold/10">
+                    <p className="text-sm text-stone-600 dark:text-stone-400 mb-6">
+                      Configure os horários de funcionamento do estabelecimento.
+                    </p>
+
+                    {studio.businessHours && studio.businessHours.length > 0 ? (
+                      <div className="space-y-4">
+                        {studio.businessHours.map((hours: any, index: number) => (
+                          <div key={index} className="p-4 bg-white/50 dark:bg-luxury-black/30 rounded-xl border border-gold/10">
+                            <div className="flex items-center justify-between">
+                              <span className="font-bold text-sm">{hours.day}</span>
+                              {hours.closed ? (
+                                <span className="text-xs text-red-500 uppercase font-black">Fechado</span>
+                              ) : (
+                                <span className="text-xs text-gold uppercase font-black">{hours.start} - {hours.end}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="py-12 text-center">
+                        <span className="material-symbols-outlined text-gold/20 text-5xl mb-2">schedule</span>
+                        <p className="text-stone-500 dark:text-stone-400 italic text-sm">Configuração de horários ainda não definida.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
             {adminSection === 'settings' && (
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
@@ -594,6 +734,30 @@ const Profile: React.FC<ProfileProps> = ({
                         placeholder="Rua Exemplo, 123 - Cidade/UF"
                       />
                     </div>
+                  </div>
+
+                  {/* História do Estabelecimento */}
+                  <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10 shadow-sm md:col-span-2">
+                    <span className="text-[9px] uppercase tracking-widest text-gold-dark dark:text-gold-light font-black mb-2 block">Nossa História</span>
+                    <textarea
+                      value={studio.history || ''}
+                      onChange={(e) => setStudio({ ...studio, history: e.target.value })}
+                      className="w-full bg-transparent py-2 font-bold text-stone-900 dark:text-parchment-light outline-none resize-none"
+                      placeholder="Conte a história do seu estabelecimento..."
+                      rows={4}
+                    />
+                  </div>
+
+                  {/* Missão */}
+                  <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10 shadow-sm md:col-span-2">
+                    <span className="text-[9px] uppercase tracking-widest text-gold-dark dark:text-gold-light font-black mb-2 block">Nossa Missão</span>
+                    <textarea
+                      value={studio.mission || ''}
+                      onChange={(e) => setStudio({ ...studio, mission: e.target.value })}
+                      className="w-full bg-transparent py-2 font-bold text-stone-900 dark:text-parchment-light outline-none resize-none"
+                      placeholder="Qual a missão do seu estabelecimento?"
+                      rows={3}
+                    />
                   </div>
                 </div>
 
