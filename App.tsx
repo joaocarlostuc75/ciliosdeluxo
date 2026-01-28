@@ -18,8 +18,14 @@ import AdminLogin from './pages/AdminLogin';
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(() => {
     const hasSeenSplash = localStorage.getItem('hasSeenSplash');
+    const savedPage = localStorage.getItem('currentPage');
+    if (savedPage) return savedPage as Page;
     return hasSeenSplash === 'true' ? Page.HOME : Page.SPLASH;
   });
+
+  useEffect(() => {
+    localStorage.setItem('currentPage', currentPage);
+  }, [currentPage]);
   const [services, setServices] = useState<Service[]>([]);
   const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -49,7 +55,10 @@ const App: React.FC = () => {
   const [selectedTime, setSelectedTime] = useState<string>('10:00');
   const [availableDays, setAvailableDays] = useState<number[]>([]);
   const [reschedulingId, setReschedulingId] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(() => {
+    const savedAdminState = localStorage.getItem('isAdmin');
+    return savedAdminState === 'true';
+  });
   const [adminPassword, setAdminPassword] = useState<string>('admin123');
   const [profileId, setProfileId] = useState<string | undefined>(undefined);
   const [darkMode, setDarkMode] = useState(false);
@@ -354,7 +363,7 @@ const App: React.FC = () => {
       end_date: block.endDate,
       reason: block.reason
     }).select().single();
-    if (data) setStudio(prev => ({ ...prev, blocks: [{ ...block, id: data.id }, ...(prev.blocks || [])] }));
+    if (data) setStudio(prev => ({ ...prev, blocks: [{ id: data.id, startDate: block.startDate, endDate: block.endDate, reason: block.reason }, ...(prev.blocks || [])] }));
   };
 
   const handleDeleteBlock = async (id: string) => {
@@ -549,6 +558,7 @@ const App: React.FC = () => {
             adminPassword={adminPassword}
             onLogin={() => {
               setIsAdmin(true);
+              localStorage.setItem('isAdmin', 'true');
               setCurrentPage(Page.PROFILE);
             }}
             onBack={() => setCurrentPage(Page.PROFILE)}

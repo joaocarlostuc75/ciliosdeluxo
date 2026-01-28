@@ -92,6 +92,7 @@ const Profile: React.FC<ProfileProps> = ({
 
   const handleLogoutAdmin = () => {
     setIsAdmin(false);
+    localStorage.removeItem('isAdmin');
     onNavigate(Page.HOME);
   };
 
@@ -574,8 +575,8 @@ const Profile: React.FC<ProfileProps> = ({
                         if (newBlockStart && newBlockEnd && newBlockReason) {
                           onAddBlock({
                             id: Date.now().toString(),
-                            start: newBlockStart,
-                            end: newBlockEnd,
+                            startDate: newBlockStart,
+                            endDate: newBlockEnd,
                             reason: newBlockReason
                           });
                           setNewBlockStart('');
@@ -599,7 +600,9 @@ const Profile: React.FC<ProfileProps> = ({
                             <div>
                               <p className="font-bold text-sm text-stone-900 dark:text-parchment-light">{block.reason}</p>
                               <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-                                {new Date(block.start).toLocaleString('pt-BR')} → {new Date(block.end).toLocaleString('pt-BR')}
+                                {(block.startDate && block.endDate) ? (
+                                  `${new Date(block.startDate).toLocaleString('pt-BR')} → ${new Date(block.endDate).toLocaleString('pt-BR')}`
+                                ) : 'Período inválido'}
                               </p>
                             </div>
                             <button
@@ -651,6 +654,47 @@ const Profile: React.FC<ProfileProps> = ({
                       <div className="py-12 text-center">
                         <span className="material-symbols-outlined text-gold/20 text-5xl mb-2">schedule</span>
                         <p className="text-stone-500 dark:text-stone-400 italic text-sm">Configuração de horários ainda não definida.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Agendamentos */}
+                <div>
+                  <div className="flex items-center gap-2 mb-6">
+                    <span className="material-symbols-outlined text-gold/70 text-base">list_alt</span>
+                    <h4 className="text-[10px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Agendamentos Realizados</h4>
+                  </div>
+
+                  <div className="space-y-4">
+                    {allAppointments && allAppointments.length > 0 ? (
+                      allAppointments.filter(app => app.status !== 'cancelled').sort((a, b) => {
+                        // Sort by date/time (simple sort for this view)
+                        return b.date - a.date;
+                      }).map((app: Appointment) => (
+                        <div key={app.id} className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-[2rem] border border-gold/10 shadow-sm flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-gold/10 flex flex-col items-center justify-center text-gold">
+                              <span className="text-lg font-black leading-none">{app.date}</span>
+                              <span className="text-[8px] uppercase font-black">{app.month.substring(0, 3)}</span>
+                            </div>
+                            <div>
+                              <h5 className="font-bold text-stone-900 dark:text-parchment-light">{app.clientName}</h5>
+                              <p className="text-[10px] text-stone-500 dark:text-stone-400 uppercase tracking-widest">{app.time} • {app.serviceName}</p>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-display font-black text-gold-dark dark:text-gold-light italic">{app.price}</p>
+                            <span className={`text-[8px] uppercase font-black px-2 py-1 rounded-full border ${app.status === 'upcoming' ? 'border-gold/30 text-gold' : 'border-emerald-500/30 text-emerald-500'}`}>
+                              {app.status === 'upcoming' ? 'Pendente' : 'Concluído'}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-12 bg-white/50 dark:bg-luxury-black/30 rounded-[2.5rem] border border-gold/10 text-center">
+                        <span className="material-symbols-outlined text-gold/20 text-5xl mb-2">event_busy</span>
+                        <p className="text-stone-500 dark:text-stone-400 italic text-sm">Nenhum agendamento encontrado.</p>
                       </div>
                     )}
                   </div>
