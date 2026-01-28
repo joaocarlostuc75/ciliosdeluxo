@@ -1,5 +1,5 @@
 
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { User, Appointment, Page, Service, Client } from '../types';
 
 interface ProfileProps {
@@ -49,7 +49,16 @@ const Profile: React.FC<ProfileProps> = ({
   onUpdateProfile
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'history' | 'admin_dashboard'>(isAdmin ? 'admin_dashboard' : 'profile');
-  const [adminSection, setAdminSection] = useState<'stats' | 'services' | 'clients' | 'agenda' | 'settings'>('stats');
+  const [adminSection, setAdminSection] = useState<'stats' | 'services' | 'clients' | 'agenda' | 'settings'>(() => {
+    const savedSection = localStorage.getItem('adminSection');
+    return (savedSection as any) || 'stats';
+  });
+
+  useEffect(() => {
+    if (isAdmin) {
+      localStorage.setItem('adminSection', adminSection);
+    }
+  }, [adminSection, isAdmin]);
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
 
   // Password Change State
@@ -594,11 +603,11 @@ const Profile: React.FC<ProfileProps> = ({
 
                     {/* Lista de bloqueios */}
                     <div className="mt-8 space-y-4">
-                      {studio.blocks && studio.blocks.length > 0 ? (
-                        studio.blocks.map((block: any) => (
-                          <div key={block.id} className="flex items-center justify-between p-4 bg-white/50 dark:bg-luxury-black/30 rounded-xl border border-gold/10 hover:border-gold/30 transition-colors">
+                      {studio?.blocks && studio.blocks.length > 0 ? (
+                        (studio.blocks || []).map((block: any) => (
+                          <div key={block.id || Math.random()} className="flex items-center justify-between p-4 bg-white/50 dark:bg-luxury-black/30 rounded-xl border border-gold/10 hover:border-gold/30 transition-colors">
                             <div>
-                              <p className="font-bold text-sm text-stone-900 dark:text-parchment-light">{block.reason}</p>
+                              <p className="font-bold text-sm text-stone-900 dark:text-parchment-light">{block.reason || 'S/ Motivo'}</p>
                               <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
                                 {(block.startDate && block.endDate) ? (
                                   `${new Date(block.startDate).toLocaleString('pt-BR')} → ${new Date(block.endDate).toLocaleString('pt-BR')}`
@@ -635,16 +644,16 @@ const Profile: React.FC<ProfileProps> = ({
                       Configure os horários de funcionamento do estabelecimento.
                     </p>
 
-                    {studio.businessHours && studio.businessHours.length > 0 ? (
+                    {studio?.businessHours && studio.businessHours.length > 0 ? (
                       <div className="space-y-4">
-                        {studio.businessHours.map((hours: any, index: number) => (
+                        {(studio.businessHours || []).map((hours: any, index: number) => (
                           <div key={index} className="p-4 bg-white/50 dark:bg-luxury-black/30 rounded-xl border border-gold/10">
                             <div className="flex items-center justify-between">
-                              <span className="font-bold text-sm">{hours.day}</span>
+                              <span className="font-bold text-sm">{hours.day || 'Dia'}</span>
                               {hours.closed ? (
                                 <span className="text-xs text-red-500 uppercase font-black">Fechado</span>
                               ) : (
-                                <span className="text-xs text-gold uppercase font-black">{hours.start} - {hours.end}</span>
+                                <span className="text-xs text-gold uppercase font-black">{hours.start || '09:00'} - {hours.end || '18:00'}</span>
                               )}
                             </div>
                           </div>
@@ -667,20 +676,22 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
 
                   <div className="space-y-4">
-                    {allAppointments && allAppointments.length > 0 ? (
-                      allAppointments.filter(app => app.status !== 'cancelled').sort((a, b) => {
+                    {allAppointments && Array.isArray(allAppointments) && allAppointments.length > 0 ? (
+                      [...allAppointments].filter(app => app && app.status !== 'cancelled').sort((a, b) => {
                         // Sort by date/time (simple sort for this view)
-                        return b.date - a.date;
+                        const dateA = a.date || 0;
+                        const dateB = b.date || 0;
+                        return dateB - dateA;
                       }).map((app: Appointment) => (
                         <div key={app.id} className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-[2rem] border border-gold/10 shadow-sm flex items-center justify-between">
                           <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-xl bg-gold/10 flex flex-col items-center justify-center text-gold">
                               <span className="text-lg font-black leading-none">{app.date}</span>
-                              <span className="text-[8px] uppercase font-black">{app.month.substring(0, 3)}</span>
+                              <span className="text-[8px] uppercase font-black">{(app.month || 'Mês').substring(0, 3)}</span>
                             </div>
                             <div>
-                              <h5 className="font-bold text-stone-900 dark:text-parchment-light">{app.clientName}</h5>
-                              <p className="text-[10px] text-stone-500 dark:text-stone-400 uppercase tracking-widest">{app.time} • {app.serviceName}</p>
+                              <h5 className="font-bold text-stone-900 dark:text-parchment-light">{app.clientName || 'Cliente'}</h5>
+                              <p className="text-[10px] text-stone-500 dark:text-stone-400 uppercase tracking-widest">{app.time || 'Horário'} • {app.serviceName || 'Serviço'}</p>
                             </div>
                           </div>
                           <div className="text-right">
