@@ -411,7 +411,7 @@ const Profile: React.FC<ProfileProps> = ({
                         <div className="flex items-center gap-4">
                           <div className="w-12 h-12 rounded-2xl bg-gold text-white flex flex-col items-center justify-center font-black">
                             <span className="text-sm">{app.date}</span>
-                            <span className="text-[7px] uppercase">{app.month.substring(0, 3)}</span>
+                            <span className="text-[7px] uppercase">{(app.month || '').substring(0, 3)}</span>
                           </div>
                           <div>
                             <p className="font-display font-black text-lg text-stone-900 dark:text-parchment-light">{app.clientName}</p>

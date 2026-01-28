@@ -122,18 +122,24 @@ const App: React.FC = () => {
       // 4. Fetch Appointments
       const { data: appData } = await supabase.from('appointments').select('*');
       if (appData) {
-        setAllAppointments(appData.map(a => ({
-          id: a.id,
-          serviceId: a.service_id,
-          serviceName: a.service_name || 'Serviço',
-          clientName: a.client_name,
-          clientWhatsapp: a.client_whatsapp,
-          date: a.date,
-          month: a.month,
-          time: a.time,
-          status: a.status as any,
-          price: a.price
-        })));
+        setAllAppointments(appData.map(a => {
+          // Helper to get month name from date string (YYYY-MM-DD)
+          const dateObj = new Date(a.date + 'T12:00:00'); // Midday to avoid timezone issues
+          const monthName = dateObj.toLocaleString('pt-BR', { month: 'long' });
+
+          return {
+            id: a.id,
+            serviceId: a.service_id,
+            serviceName: a.service_name || 'Serviço',
+            clientName: a.client_name || 'Cliente',
+            clientWhatsapp: a.client_whatsapp || '',
+            date: a.date,
+            month: monthName.charAt(0).toUpperCase() + monthName.slice(1), // Capitalize
+            time: a.time,
+            status: a.status as any,
+            price: a.service_price ? `R$ ${a.service_price.replace('.', ',')}` : 'R$ 0,00'
+          };
+        }));
       }
       // 5. Fetch Studio Profile
       const { data: profileData } = await supabase.from('profiles').select('*').single();
