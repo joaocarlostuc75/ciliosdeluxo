@@ -17,10 +17,10 @@ import AdminLogin from './pages/AdminLogin';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>(() => {
-    const hasSeenSplash = localStorage.getItem('hasSeenSplash');
+    // Splash screen disabled - always start at HOME
     const savedPage = localStorage.getItem('currentPage');
     if (savedPage) return savedPage as Page;
-    return hasSeenSplash === 'true' ? Page.HOME : Page.SPLASH;
+    return Page.HOME; // Skip splash, go directly to HOME
   });
 
   useEffect(() => {
@@ -137,13 +137,17 @@ const App: React.FC = () => {
             month: monthName.charAt(0).toUpperCase() + monthName.slice(1), // Capitalize
             time: a.time,
             status: a.status as any,
-            price: a.service_price ? `R$ ${a.service_price.replace('.', ',')}` : 'R$ 0,00'
+            price: 'R$ 0,00' // Column service_price doesn't exist in DB
           };
         }));
       }
       // 5. Fetch Studio Profile
-      const { data: profileData } = await supabase.from('profiles').select('*').single();
+      const { data: profileData, error: profileError } = await supabase.from('profiles').select('*').single();
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+      }
       if (profileData) {
+        console.log('Profile loaded:', profileData);
         setProfileId(profileData.id);
         setStudio(prev => ({
           ...prev,
@@ -156,6 +160,8 @@ const App: React.FC = () => {
           mission: profileData.mission || prev.mission,
           image: profileData.avatar_url || prev.image
         }));
+      } else {
+        console.warn('No profile data found in database');
       }
 
       // 6. Fetch Clients
@@ -401,7 +407,7 @@ const App: React.FC = () => {
       a.month === currentMonthName &&
       a.time === time &&
       a.serviceId === serviceId &&
-      a.status !== 'cancelled' &&
+      a.status !== 'CANCELLED' &&
       a.id !== excludeId
     );
   };
@@ -426,15 +432,15 @@ const App: React.FC = () => {
       client_name: app.clientName,
       client_whatsapp: app.clientWhatsapp,
       date: app.date,
-      month: app.month,
+      // month: app.month, // REMOVED - column doesn't exist in DB
       time: app.time,
-      status: app.status,
-      price: app.price
+      status: app.status
+      // price: app.price // REMOVED - column doesn't exist in DB (price is in services table)
     }).select().single();
 
     if (error) {
       console.error('Error saving appointment:', error);
-      alert('Erro ao salvar agendamento. Por favor, tente novamente.');
+      alert(`Erro ao salvar agendamento: ${error.message}\nDetalhes: ${error.details || 'N/A'}`);
       return;
     }
 
@@ -458,25 +464,69 @@ const App: React.FC = () => {
 
 
   const handleUpdateProfile = async (updatedStudio: User) => {
-    setStudio(updatedStudio);
-    // Persist to Supabase
-    const { error } = await supabase.from('profiles').upsert({
-      id: profileId, // Use the real UUID from the database
-      name: updatedStudio.name,
-      owner_name: updatedStudio.ownerName,
-      whatsapp: updatedStudio.whatsapp,
-      address: updatedStudio.address,
-      email: updatedStudio.email,
-      avatar_url: updatedStudio.image,
-      history: updatedStudio.history,
-      mission: updatedStudio.mission
-    });
+    try {
+      setStudio(updatedStudio);
 
-    if (error) {
-      console.error("Error updating profile:", error);
-      alert("Erro ao salvar perfil.");
-    } else {
-      alert("Perfil atualizado com sucesso!");
+      console.log('Starting profile save process...');
+      console.log('Updated studio data (keys):', Object.keys(updatedStudio));
+
+      // ALWAYS fetch the profile ID from database before saving
+      console.log('Fetching profile ID from database...');
+      const { data: profileData, error: fetchError } = await supabase
+        .from('profiles')
+        .select('id')
+        .single();
+
+      if (fetchError) {
+        console.error('Error fetching profile ID:', fetchError);
+        alert('Erro ao buscar perfil do banco de dados. Detalhes: ' + fetchError.message);
+        return;
+      }
+
+      if (!profileData || !profileData.id) {
+        console.error('No profile found in database');
+        alert('Nenhum perfil encontrado no banco de dados. Por favor, contate o suporte.');
+        return;
+      }
+
+      const dbProfileId = profileData.id;
+      console.log('Profile ID from database:', dbProfileId);
+
+      // Update state if needed
+      if (!profileId) {
+        setProfileId(dbProfileId);
+      }
+
+      // Save using UPDATE with the confirmed ID
+      console.log('Saving profile to database...');
+      const { data: updateData, error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          name: updatedStudio.name,
+          owner_name: updatedStudio.ownerName,
+          whatsapp: updatedStudio.whatsapp,
+          address: updatedStudio.address,
+          email: updatedStudio.email,
+          avatar_url: updatedStudio.image,
+          history: updatedStudio.history,
+          mission: updatedStudio.mission
+        })
+        .eq('id', dbProfileId)
+        .select();
+
+      console.log('Update response data:', updateData);
+      console.log('Update error:', updateError);
+
+      if (updateError) {
+        console.error("Error updating profile:", updateError);
+        alert(`Erro ao salvar perfil:\nMensagem: ${updateError.message}\nCódigo: ${updateError.code || 'N/A'}\nDetalhes: ${updateError.details || 'N/A'}`);
+      } else {
+        console.log('Profile saved successfully!');
+        alert("Perfil atualizado com sucesso!");
+      }
+    } catch (error: any) {
+      console.error('Unexpected error in handleUpdateProfile:', error);
+      alert('Erro inesperado ao salvar perfil: ' + (error?.message || 'Desconhecido'));
     }
   };
 

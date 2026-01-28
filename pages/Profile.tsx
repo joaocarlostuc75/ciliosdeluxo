@@ -82,14 +82,14 @@ const Profile: React.FC<ProfileProps> = ({
 
   const stats = useMemo(() => {
     const totalRevenue = allAppointments
-      .filter(a => a.status === 'completed')
+      .filter(a => a.status === 'COMPLETED')
       .reduce((sum, a) => sum + parsePrice(a.price), 0);
 
     const pendingRevenue = allAppointments
-      .filter(a => a.status === 'upcoming')
+      .filter(a => a.status === 'SCHEDULED')
       .reduce((sum, a) => sum + parsePrice(a.price), 0);
 
-    const completedCount = allAppointments.filter(a => a.status === 'completed').length;
+    const completedCount = allAppointments.filter(a => a.status === 'COMPLETED').length;
     const ticketMedio = completedCount > 0 ? totalRevenue / completedCount : 0;
 
     const popularServices = services.map(s => ({
@@ -106,17 +106,61 @@ const Profile: React.FC<ProfileProps> = ({
     onNavigate(Page.HOME);
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const imageData = reader.result as string;
-        if (isAdmin) setStudio({ ...studio, image: imageData });
-        else setClient({ ...client, image: imageData });
-      };
-      reader.readAsDataURL(file);
+      try {
+        // Compress image to max 200x200px with 0.7 quality
+        const compressed = await compressImage(file, 200, 200, 0.7);
+        if (isAdmin) setStudio({ ...studio, image: compressed });
+        else setClient({ ...client, image: compressed });
+      } catch (error) {
+        console.error('Error compressing image:', error);
+        alert('Erro ao processar imagem. Tente uma imagem menor.');
+      }
     }
+  };
+
+  // Helper function to compress images
+  const compressImage = (file: File, maxWidth: number = 200, maxHeight: number = 200, quality: number = 0.7): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target?.result as string;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Calculate new dimensions while maintaining aspect ratio
+          if (width > height) {
+            if (width > maxWidth) {
+              height = (height * maxWidth) / width;
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = (width * maxHeight) / height;
+              height = maxHeight;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          ctx?.drawImage(img, 0, 0, width, height);
+
+          // Convert to base64 with compression
+          const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressedBase64);
+        };
+        img.onerror = reject;
+      };
+      reader.onerror = reject;
+    });
   };
 
   const handleServiceImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -172,9 +216,9 @@ const Profile: React.FC<ProfileProps> = ({
 
   const getStatusStyle = (status: string) => {
     switch (status) {
-      case 'upcoming': return 'text-gold-dark dark:text-gold-light border-gold/40 bg-gold/10 font-bold';
-      case 'completed': return 'text-emerald-700 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10 font-bold';
-      case 'cancelled': return 'text-rose-600 dark:text-rose-400 border-rose-500/30 bg-rose-500/10 font-bold';
+      case 'SCHEDULED': return 'text-gold-dark dark:text-gold-light border-gold/40 bg-gold/10 font-bold';
+      case 'COMPLETED': return 'text-emerald-700 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10 font-bold';
+      case 'CANCELLED': return 'text-rose-600 dark:text-rose-400 border-rose-500/30 bg-rose-500/10 font-bold';
       default: return 'text-stone-500 dark:text-stone-300 border-stone-500/20 bg-stone-500/5 font-bold';
     }
   };
@@ -425,14 +469,14 @@ const Profile: React.FC<ProfileProps> = ({
                             onChange={(e) => onUpdateAppointment({ ...app, status: e.target.value as any })}
                             className={`text-[9px] uppercase font-black border-2 rounded-full px-4 py-1.5 bg-transparent outline-none ${getStatusStyle(app.status)}`}
                           >
-                            <option value="upcoming">Agendado</option>
-                            <option value="completed">Concluído</option>
-                            <option value="cancelled">Cancelado</option>
+                            <option value="SCHEDULED">Agendado</option>
+                            <option value="COMPLETED">Concluído</option>
+                            <option value="CANCELLED">Cancelado</option>
                           </select>
                         </div>
                       </div>
 
-                      {app.status === 'upcoming' && (
+                      {app.status === 'SCHEDULED' && (
                         <div className="pt-4 border-t border-gold/10 flex flex-wrap gap-3">
                           <button onClick={() => sendAdminConfirmation(app)} className="px-4 py-2 bg-gold/10 text-gold-dark dark:text-gold-light rounded-xl text-[9px] font-bold uppercase hover:bg-gold/20 transition-all flex items-center gap-1">
                             Confirmar
@@ -472,7 +516,7 @@ const Profile: React.FC<ProfileProps> = ({
                     app.clientWhatsapp === c.whatsapp || app.clientName === c.name
                   );
                   const clientTotal = clientApps
-                    .filter(app => app.status === 'completed')
+                    .filter(app => app.status === 'COMPLETED')
                     .reduce((sum, app) => sum + parsePrice(app.price), 0);
 
                   return (
@@ -507,9 +551,9 @@ const Profile: React.FC<ProfileProps> = ({
                         </h4>
                         <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto pr-2 no-scrollbar">
                           {clientApps.map((app, idx) => (
-                            <div key={idx} className={`p-4 rounded-2xl border flex items-center justify-between group transition-colors ${app.status === 'completed' ? 'bg-stone-50 dark:bg-luxury-black/60 border-stone-200 dark:border-stone-800' : 'bg-gold/5 border-gold/20'}`}>
+                            <div key={idx} className={`p-4 rounded-2xl border flex items-center justify-between group transition-colors ${app.status === 'COMPLETED' ? 'bg-stone-50 dark:bg-luxury-black/60 border-stone-200 dark:border-stone-800' : 'bg-gold/5 border-gold/20'}`}>
                               <div>
-                                <p className={`font-display font-black text-base ${app.status === 'completed' ? 'text-stone-700 dark:text-stone-300' : 'text-stone-900 dark:text-parchment-light'}`}>{app.serviceName}</p>
+                                <p className={`font-display font-black text-base ${app.status === 'COMPLETED' ? 'text-stone-700 dark:text-stone-300' : 'text-stone-900 dark:text-parchment-light'}`}>{app.serviceName}</p>
                                 <p className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black">{app.date} {app.month.substring(0, 3)} • {app.time}</p>
                               </div>
                               <span className={`text-[8px] uppercase font-black px-3 py-1 rounded-full ${getStatusStyle(app.status)}`}>{app.status}</span>
@@ -698,8 +742,8 @@ const Profile: React.FC<ProfileProps> = ({
                             </div>
                             <div className="text-right">
                               <p className="font-display font-black text-gold-dark dark:text-gold-light italic">{app.price}</p>
-                              <span className={`text-[8px] uppercase font-black px-2 py-1 rounded-full border ${app.status === 'upcoming' ? 'border-gold/30 text-gold' : 'border-emerald-500/30 text-emerald-500'}`}>
-                                {app.status === 'upcoming' ? 'Pendente' : 'Concluído'}
+                              <span className={`text-[8px] uppercase font-black px-2 py-1 rounded-full border ${app.status === 'SCHEDULED' ? 'border-gold/30 text-gold' : 'border-emerald-500/30 text-emerald-500'}`}>
+                                {app.status === 'SCHEDULED' ? 'Pendente' : 'Concluído'}
                               </span>
                             </div>
                           </div>
@@ -922,7 +966,7 @@ const Profile: React.FC<ProfileProps> = ({
                   <span className="text-lg font-display text-gold-dark dark:text-gold-light font-black italic">{app.price}</span>
                 </div>
 
-                {app.status === 'upcoming' && (
+                {app.status === 'SCHEDULED' && (
                   <div className="flex gap-4 border-t border-gold/10 pt-6">
                     <button onClick={() => onRescheduleAppointment(app.id)} className="flex-1 py-4 rounded-2xl bg-gold/10 border border-gold/20 text-gold-dark dark:text-gold-light text-[10px] font-black uppercase tracking-widest hover:bg-gold/20 transition-all">Reagendar</button>
                     <button onClick={() => onCancelAppointment(app.id)} className="flex-1 py-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-[10px] font-black uppercase tracking-widest hover:bg-rose-500/20 transition-all">Cancelar</button>

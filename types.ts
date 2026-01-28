@@ -19,7 +19,7 @@ export interface Appointment {
   date: number;
   month: string;
   time: string;
-  status: 'upcoming' | 'completed' | 'cancelled';
+  status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
   price: string;
 }
 

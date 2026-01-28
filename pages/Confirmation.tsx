@@ -17,10 +17,10 @@ interface ConfirmationProps {
   currentMonthIndex: number;
 }
 
-const Confirmation: React.FC<ConfirmationProps> = ({ 
-  client, 
-  setClient, 
-  studioWhatsapp, 
+const Confirmation: React.FC<ConfirmationProps> = ({
+  client,
+  setClient,
+  studioWhatsapp,
   selectedService,
   selectedDate,
   selectedTime,
@@ -33,13 +33,13 @@ const Confirmation: React.FC<ConfirmationProps> = ({
 }) => {
   // Format date as DD/MM/AA
   const formattedDate = `${String(selectedDate).padStart(2, '0')}/${String(currentMonthIndex + 1).padStart(2, '0')}/${String(currentYear).slice(-2)}`;
-  
+
   const handleConfirm = () => {
     if (!client.name || !client.whatsapp) {
       alert("Por favor, preencha seu nome e contato para prosseguir.");
       return;
     }
-    
+
     if (!selectedService) {
       alert("Erro ao identificar o serviço selecionado.");
       return;
@@ -53,7 +53,7 @@ const Confirmation: React.FC<ConfirmationProps> = ({
 
     const cleanStudioNumber = studioWhatsapp.replace(/\D/g, '');
     const serviceName = selectedService?.name || 'Procedimento';
-    
+
     const newAppointment: Appointment = {
       id: Date.now().toString(),
       serviceId: selectedService?.id || 'unknown',
@@ -63,10 +63,10 @@ const Confirmation: React.FC<ConfirmationProps> = ({
       date: selectedDate,
       month: currentMonthName,
       time: selectedTime,
-      status: 'upcoming',
+      status: 'SCHEDULED',
       price: selectedService?.price || 'R$ 130,00'
     };
-    
+
     onConfirmBooking(newAppointment);
 
     const message = [
@@ -102,7 +102,7 @@ const Confirmation: React.FC<ConfirmationProps> = ({
         Sua Escolha de Luxo
       </h2>
       <div className="w-12 h-[2px] bg-gold mb-8"></div>
-      
+
       <p className="text-stone-600 dark:text-stone-300 text-sm leading-relaxed text-center mb-10 max-w-[280px] font-bold">
         Para finalizar seu agendamento premium, por favor confirme seus dados de contato.
       </p>
@@ -112,10 +112,10 @@ const Confirmation: React.FC<ConfirmationProps> = ({
           <label className="block text-[10px] uppercase tracking-widest text-gold dark:text-gold-light font-black ml-1">Nome Completo</label>
           <div className="relative">
             <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gold/60">person</span>
-            <input 
+            <input
               placeholder="Maria Silva"
               value={client.name}
-              onChange={(e) => setClient({...client, name: e.target.value})}
+              onChange={(e) => setClient({ ...client, name: e.target.value })}
               className="w-full bg-white/60 dark:bg-luxury-medium/60 border border-gold/20 rounded-xl py-4 pl-12 pr-4 text-stone-900 dark:text-parchment-light font-bold focus:border-gold outline-none transition-all placeholder:text-stone-400 dark:placeholder:text-stone-600 shadow-sm"
             />
           </div>
@@ -124,10 +124,10 @@ const Confirmation: React.FC<ConfirmationProps> = ({
           <label className="block text-[10px] uppercase tracking-widest text-gold dark:text-gold-light font-black ml-1">WhatsApp</label>
           <div className="relative">
             <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gold/60">smartphone</span>
-            <input 
+            <input
               placeholder="(00) 00000-0000"
               value={client.whatsapp}
-              onChange={(e) => setClient({...client, whatsapp: e.target.value})}
+              onChange={(e) => setClient({ ...client, whatsapp: e.target.value })}
               className="w-full bg-white/60 dark:bg-luxury-medium/60 border border-gold/20 rounded-xl py-4 pl-12 pr-4 text-stone-900 dark:text-parchment-light font-bold focus:border-gold outline-none transition-all placeholder:text-stone-400 dark:placeholder:text-stone-600 shadow-sm"
             />
           </div>
