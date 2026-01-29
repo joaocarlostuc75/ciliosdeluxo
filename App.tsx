@@ -594,7 +594,7 @@ const App: React.FC = () => {
           setCurrentPage(Page.HOME);
         }} />;
       case Page.HOME:
-        return <Home services={services} onSelectService={navigateToService} />;
+        return <Home services={services} onSelectService={navigateToService} studioName={studio.name} />;
       case Page.SERVICE_DETAILS:
         return selectedService ? (
           <ServiceDetails
@@ -607,7 +607,7 @@ const App: React.FC = () => {
             }}
             onUpdate={handleUpdateService}
           />
-        ) : <Home services={services} onSelectService={navigateToService} />;
+        ) : <Home services={services} onSelectService={navigateToService} studioName={studio.name} />;
       case Page.ABOUT:
         return <About studio={studio} setStudio={setStudio} isAdmin={isAdmin} />;
       case Page.BOOKING:
@@ -700,7 +700,7 @@ const App: React.FC = () => {
           />
         );
       default:
-        return <Home services={services} onSelectService={navigateToService} />;
+        return <Home services={services} onSelectService={navigateToService} studioName={studio.name} />;
     }
   };
 
