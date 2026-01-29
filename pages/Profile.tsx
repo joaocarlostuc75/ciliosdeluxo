@@ -153,13 +153,13 @@ const Profile: React.FC<ProfileProps> = ({
   const sendReminder = (app: Appointment, hours: string) => {
     const cleanNumber = app.clientWhatsapp.replace(/\D/g, '');
     const dateFormatted = String(app.date).includes('-') ? app.date.split('-').reverse().join('/') : app.date;
-    let text = `✨ *Lembrete: Seu Momento de Luxo está chegando!* ✨\n\nOlá, *${app.clientName}*! Tudo bem?\n\nPassando para confirmar seu agendamento de *${app.serviceName}* conosco:\n\n📅 *Data:* ${dateFormatted}\n⏰ *Horário:* ${app.time}\n📍 *Local:* ${studio.address}\n\nEstamos ansiosos para te proporcionar uma experiência incrível!\n\n_Att., Equipe Cílios de Luxo_`;
+    let text = `✨ *Lembrete: Seu Momento de Luxo está chegando!* ✨\n\nOlá, *${app.clientName}*! Tudo bem?\n\nPassando para confirmar seu agendamento de *${app.serviceName}* conosco:\n\n📅 *Data:* ${dateFormatted}\n⏰ *Horário:* ${app.time}\n📍 *Local:* ${studio.address}\n\nEstamos ansiosos para te proporcionar uma experiência incrível!\n\n_Att., Equipe ${studio.name}_`;
     window.open(`https://wa.me/${cleanNumber}?text=${encodeURIComponent(text)}`);
   };
 
   const sendAdminConfirmation = (app: Appointment) => {
     const cleanNumber = app.clientWhatsapp.replace(/\D/g, '');
-    let text = `✅ *Confirmação Cílios de Luxo* ✅\n\nOlá ${app.clientName}, seu agendamento de *${app.serviceName}* para o dia ${app.date} às ${app.time} foi confirmado com sucesso!\n\nAté logo! ✨`;
+    let text = `✅ *Confirmação ${studio.name}* ✅\n\nOlá ${app.clientName}, seu agendamento de *${app.serviceName}* para o dia ${app.date} às ${app.time} foi confirmado com sucesso!\n\nAté logo! ✨`;
     window.open(`https://wa.me/${cleanNumber}?text=${encodeURIComponent(text)}`);
   };
 
@@ -195,7 +195,7 @@ const Profile: React.FC<ProfileProps> = ({
             {isAdmin ? (studio.ownerName || 'Hub Administrativo') : (client.name || 'Seu Perfil')}
           </h2>
           <p className="text-[10px] text-gold dark:text-gold-light uppercase tracking-[0.3em] font-black mt-1">
-            {isAdmin ? 'Gestão Cílios de Luxo' : 'Membro Exclusivo'}
+            {isAdmin ? `Gestão ${studio.name}` : 'Membro Exclusivo'}
           </p>
         </header>
 
@@ -325,64 +325,99 @@ const Profile: React.FC<ProfileProps> = ({
                     <h3 className="text-[11px] uppercase tracking-widest text-stone-500 font-black">Horários de Funcionamento</h3>
                   </div>
                   <p className="text-[10px] text-stone-400 font-bold -mt-4 mb-4">Configure os horários de funcionamento do estabelecimento.</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, i) => {
-                      const hourConfig = studio.businessHours?.find(h => h.dayOfWeek === i) || { dayOfWeek: i, isOpen: false, slots: [] };
+                  <div className="grid grid-cols-1 gap-4">
+                    {['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'].map((dayName, i) => {
+                      const dayOfWeek = (i + 1) % 7;
+                      const hourConfig = studio.businessHours?.find(h => h.dayOfWeek === dayOfWeek) || { dayOfWeek, isOpen: false, slots: [] };
                       return (
-                        <div key={i} className="p-4 bg-white/60 dark:bg-luxury-medium/20 rounded-2xl border border-gold/5 flex items-center justify-between">
-                          <span className="text-[10px] uppercase font-black text-stone-600">{day}</span>
-                          <div className="flex items-center gap-4">
+                        <div key={dayOfWeek} className="p-6 bg-white dark:bg-luxury-medium/20 rounded-[2rem] border border-gold/10 shadow-sm transition-all hover:border-gold/30">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                              <span className={`w-3 h-3 rounded-full ${hourConfig.isOpen ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]' : 'bg-stone-300'}`}></span>
+                              <span className="text-[11px] uppercase font-black text-stone-700 tracking-widest">{dayName}</span>
+                            </div>
                             <button
                               onClick={() => {
                                 const newHours = [...(studio.businessHours || [])];
-                                const idx = newHours.findIndex(h => h.dayOfWeek === i);
+                                const idx = newHours.findIndex(h => h.dayOfWeek === dayOfWeek);
                                 if (idx >= 0) {
                                   newHours[idx] = { ...newHours[idx], isOpen: !newHours[idx].isOpen };
                                 } else {
-                                  newHours.push({ dayOfWeek: i, isOpen: true, slots: [{ start: '09:00', end: '18:00' }] });
+                                  newHours.push({ dayOfWeek, isOpen: true, slots: [{ start: '08:00', end: '12:00' }, { start: '14:00', end: '18:00' }] });
                                 }
                                 onUpdateBusinessHours(newHours);
                               }}
-                              className={`px-3 py-1 rounded-full text-[8px] font-black uppercase transition-all ${hourConfig.isOpen ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-stone-100 text-stone-400 border border-stone-200'}`}
+                              className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${hourConfig.isOpen ? 'bg-gold/10 text-gold-dark border border-gold/20' : 'bg-stone-100 text-stone-400 border border-stone-200'}`}
                             >
                               {hourConfig.isOpen ? 'Aberto' : 'Fechado'}
                             </button>
-                            {hourConfig.isOpen && (
-                              <div className="flex items-center gap-1">
-                                <input
-                                  type="time"
-                                  value={hourConfig.slots[0]?.start || '09:00'}
-                                  onChange={(e) => {
-                                    const newHours = [...(studio.businessHours || [])];
-                                    const idx = newHours.findIndex(h => h.dayOfWeek === i);
-                                    if (idx >= 0) {
-                                      const newSlots = [...newHours[idx].slots];
-                                      newSlots[0] = { ...newSlots[0], start: e.target.value };
-                                      newHours[idx] = { ...newHours[idx], slots: newSlots };
-                                      onUpdateBusinessHours(newHours);
-                                    }
-                                  }}
-                                  className="bg-transparent text-[10px] font-bold outline-none text-stone-600"
-                                />
-                                <span className="text-stone-400">-</span>
-                                <input
-                                  type="time"
-                                  value={hourConfig.slots[0]?.end || '18:00'}
-                                  onChange={(e) => {
-                                    const newHours = [...(studio.businessHours || [])];
-                                    const idx = newHours.findIndex(h => h.dayOfWeek === i);
-                                    if (idx >= 0) {
-                                      const newSlots = [...newHours[idx].slots];
-                                      newSlots[0] = { ...newSlots[0], end: e.target.value };
-                                      newHours[idx] = { ...newHours[idx], slots: newSlots };
-                                      onUpdateBusinessHours(newHours);
-                                    }
-                                  }}
-                                  className="bg-transparent text-[10px] font-bold outline-none text-stone-600"
-                                />
-                              </div>
-                            )}
                           </div>
+
+                          {hourConfig.isOpen && (
+                            <div className="space-y-3">
+                              {(hourConfig.slots.length > 0 ? hourConfig.slots : [{ start: '08:00', end: '18:00' }]).map((slot, sIdx) => (
+                                <div key={sIdx} className="flex items-center justify-between bg-gold/[0.03] p-3 rounded-xl border border-gold/5">
+                                  <div className="flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-gold text-xs">schedule</span>
+                                    <input
+                                      type="time"
+                                      value={slot.start}
+                                      onChange={(e) => {
+                                        const newHours = [...(studio.businessHours || [])];
+                                        const dIdx = newHours.findIndex(h => h.dayOfWeek === dayOfWeek);
+                                        const newSlots = [...newHours[dIdx].slots];
+                                        newSlots[sIdx] = { ...newSlots[sIdx], start: e.target.value };
+                                        newHours[dIdx] = { ...newHours[dIdx], slots: newSlots };
+                                        onUpdateBusinessHours(newHours);
+                                      }}
+                                      className="bg-transparent text-[11px] font-black text-stone-600 outline-none"
+                                    />
+                                    <span className="text-gold/40">às</span>
+                                    <input
+                                      type="time"
+                                      value={slot.end}
+                                      onChange={(e) => {
+                                        const newHours = [...(studio.businessHours || [])];
+                                        const dIdx = newHours.findIndex(h => h.dayOfWeek === dayOfWeek);
+                                        const newSlots = [...newHours[dIdx].slots];
+                                        newSlots[sIdx] = { ...newSlots[sIdx], end: e.target.value };
+                                        newHours[dIdx] = { ...newHours[dIdx], slots: newSlots };
+                                        onUpdateBusinessHours(newHours);
+                                      }}
+                                      className="bg-transparent text-[11px] font-black text-stone-600 outline-none"
+                                    />
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      const newHours = [...(studio.businessHours || [])];
+                                      const dIdx = newHours.findIndex(h => h.dayOfWeek === dayOfWeek);
+                                      const newSlots = newHours[dIdx].slots.filter((_, i) => i !== sIdx);
+                                      newHours[dIdx] = { ...newHours[dIdx], slots: newSlots };
+                                      onUpdateBusinessHours(newHours);
+                                    }}
+                                    className="text-stone-300 hover:text-rose-500 transition-colors"
+                                  >
+                                    <span className="material-symbols-outlined text-xs">close</span>
+                                  </button>
+                                </div>
+                              ))}
+                              <button
+                                onClick={() => {
+                                  const newHours = [...(studio.businessHours || [])];
+                                  const dIdx = newHours.findIndex(h => h.dayOfWeek === dayOfWeek);
+                                  const lastSlot = newHours[dIdx].slots[newHours[dIdx].slots.length - 1];
+                                  newHours[dIdx] = {
+                                    ...newHours[dIdx],
+                                    slots: [...newHours[dIdx].slots, { start: lastSlot?.end || '14:00', end: '18:00' }]
+                                  };
+                                  onUpdateBusinessHours(newHours);
+                                }}
+                                className="w-full py-2 border border-dashed border-gold/20 rounded-xl text-[8px] uppercase font-black text-gold/60 hover:bg-gold/5 transition-all"
+                              >
+                                + Adicionar Período
+                              </button>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -474,6 +509,10 @@ const Profile: React.FC<ProfileProps> = ({
                     <span className="text-[9px] uppercase tracking-widest text-gold-dark font-black mb-2 block">Proprietário</span>
                     <input type="text" value={studio.ownerName || ''} onChange={(e) => setStudio({ ...studio, ownerName: e.target.value })} className="w-full bg-transparent font-display text-lg font-bold text-stone-900 dark:text-parchment-light outline-none" />
                   </div>
+                  <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10">
+                    <span className="text-[9px] uppercase tracking-widest text-gold-dark font-black mb-2 block">WhatsApp do Estúdio</span>
+                    <input type="text" value={studio.whatsapp} onChange={(e) => setStudio({ ...studio, whatsapp: e.target.value })} className="w-full bg-transparent font-display text-lg font-bold text-stone-900 dark:text-parchment-light outline-none" />
+                  </div>
                   <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10 md:col-span-2">
                     <span className="text-[9px] uppercase tracking-widest text-gold-dark font-black mb-2 block">Endereço</span>
                     <input type="text" value={studio.address} onChange={(e) => setStudio({ ...studio, address: e.target.value })} className="w-full bg-transparent font-bold text-stone-900 dark:text-parchment-light outline-none" />
@@ -497,17 +536,6 @@ const Profile: React.FC<ProfileProps> = ({
                   {passwordMsg && <p className="text-[10px] text-center font-bold text-emerald-500">{passwordMsg}</p>}
                 </div>
 
-                {/* Zona de Perigo / Entrega */}
-                <div className="pt-10 border-t border-rose-500/10 space-y-6">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-rose-500 font-bold">warning</span>
-                    <h3 className="text-[11px] uppercase tracking-widest text-stone-500 font-black">Entrega ao Usuário Final</h3>
-                  </div>
-                  <div className="p-8 bg-rose-500/5 border border-rose-500/20 rounded-[2.5rem]">
-                    <p className="text-xs text-rose-800 mb-6 font-bold">Atenção: Isso removerá todos os dados de testes (clientes e agendamentos).</p>
-                    <button onClick={onClearSystem} className="w-full py-4 bg-rose-500 text-white text-[10px] font-black uppercase rounded-2xl shadow-lg hover:bg-rose-600 transition-colors">Limpar Sistema para Entrega Real</button>
-                  </div>
-                </div>
               </div>
             )}
 

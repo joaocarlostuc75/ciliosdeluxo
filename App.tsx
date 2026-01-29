@@ -30,7 +30,7 @@ const App: React.FC = () => {
   const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [studio, setStudio] = useState<User>({
-    name: 'Cílios de Luxo Studio',
+    name: 'Seu Estúdio',
     whatsapp: '+55',
     address: '',
     email: '',
