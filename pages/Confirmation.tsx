@@ -7,7 +7,7 @@ interface ConfirmationProps {
   setClient: (client: User) => void;
   studioWhatsapp: string;
   selectedService: Service | null;
-  selectedDate: number;
+  selectedDate: string; // ISO string YYYY-MM-DD
   selectedTime: string;
   onConfirmBooking: (appointment: Appointment) => void;
   checkAvailability: (date: number, time: string, serviceId: string) => boolean;
@@ -34,8 +34,15 @@ const Confirmation: React.FC<ConfirmationProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
 
-  // Format date as DD/MM/AA
-  const formattedDate = `${String(selectedDate).padStart(2, '0')}/${String(currentMonthIndex + 1).padStart(2, '0')}/${String(currentYear).slice(-2)}`;
+  // Format date as DD/MM/AA for display
+  const formattedDate = React.useMemo(() => {
+    try {
+      const [year, month, day] = selectedDate.split('-');
+      return `${day}/${month}/${year.slice(-2)}`;
+    } catch (e) {
+      return 'Data Inválida';
+    }
+  }, [selectedDate]);
 
   const handleConfirm = async () => {
     if (!client.name || !client.whatsapp) {
@@ -66,7 +73,7 @@ const Confirmation: React.FC<ConfirmationProps> = ({
         serviceName: serviceName,
         clientName: client.name,
         clientWhatsapp: client.whatsapp,
-        date: selectedDate,
+        date: selectedDate, // Now already a string YYYY-MM-DD
         month: currentMonthName,
         time: selectedTime,
         status: 'SCHEDULED',
@@ -75,9 +82,9 @@ const Confirmation: React.FC<ConfirmationProps> = ({
 
       await onConfirmBooking(newAppointment);
       setIsConfirmed(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error confirming booking:", error);
-      alert("Ocorreu um erro ao processar seu agendamento. Por favor, tente novamente.");
+      alert(`Ocorreu um erro ao processar seu agendamento: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setIsLoading(false);
     }

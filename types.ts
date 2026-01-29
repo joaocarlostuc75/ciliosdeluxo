@@ -16,7 +16,7 @@ export interface Appointment {
   serviceName: string;
   clientName: string;
   clientWhatsapp: string;
-  date: number;
+  date: string;
   month: string;
   time: string;
   status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';

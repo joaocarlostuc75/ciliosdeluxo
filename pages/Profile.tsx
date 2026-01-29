@@ -346,9 +346,63 @@ const Profile: React.FC<ProfileProps> = ({
             )}
 
             {adminSection === 'agenda' && (
-              <div className="space-y-10">
-                {/* Agenda Blocks Management */}
+              <div className="space-y-12">
+                {/* 1. Agendamentos Realizados/Histórico */}
                 <div className="space-y-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="material-symbols-outlined text-gold/70 text-base">list_alt</span>
+                    <h3 className="text-[11px] uppercase tracking-widest text-stone-500 dark:text-stone-200 font-black">Agendamentos Realizados</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    {allAppointments && allAppointments.length > 0 ? (
+                      [...allAppointments].filter(app => app && app.status !== 'CANCELLED').sort((a, b) => {
+                        const dateA = new Date(a.date + 'T12:00:00').getTime();
+                        const dateB = new Date(b.date + 'T12:00:00').getTime();
+                        return dateB - dateA;
+                      }).map((app: Appointment) => (
+                        <div key={app.id} className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-[2rem] border border-gold/10 shadow-sm flex items-center justify-between transition-all hover:border-gold/30">
+                          <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 rounded-xl bg-gold/10 flex flex-col items-center justify-center text-gold">
+                              <span className="text-lg font-black leading-none">{String(app.date).includes('-') ? app.date.split('-')[2] : app.date}</span>
+                              <span className="text-[8px] uppercase font-black">{(app.month || 'Mês').substring(0, 3)}</span>
+                            </div>
+                            <div>
+                              <h5 className="font-bold text-stone-900 dark:text-parchment-light">{app.clientName || 'Cliente'}</h5>
+                              <p className="text-[10px] text-stone-500 dark:text-stone-400 uppercase tracking-widest">{app.time || 'Horário'} • {app.serviceName || 'Serviço'}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-4">
+                            <select
+                              value={app.status}
+                              onChange={(e) => onUpdateAppointment({ ...app, status: e.target.value as any })}
+                              className={`text-[9px] uppercase font-black border-2 rounded-full px-4 py-1.5 bg-transparent outline-none ${getStatusStyle(app.status)}`}
+                            >
+                              <option value="SCHEDULED">Agendado</option>
+                              <option value="COMPLETED">Concluído</option>
+                              <option value="CANCELLED">Cancelado</option>
+                            </select>
+
+                            {app.status === 'SCHEDULED' && (
+                              <button onClick={() => onCancelAppointment(app.id)} className="text-rose-400 hover:text-rose-600 p-2">
+                                <span className="material-symbols-outlined text-sm font-bold">cancel</span>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-12 bg-white/50 dark:bg-luxury-black/30 rounded-[2.5rem] border border-gold/10 text-center">
+                        <span className="material-symbols-outlined text-gold/20 text-5xl mb-2">event_busy</span>
+                        <p className="text-stone-500 dark:text-stone-400 italic text-sm">Nenhum agendamento encontrado.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Bloqueios de Agenda */}
+                <div className="pt-10 border-t border-gold/10 space-y-6">
                   <div className="flex items-center gap-2">
                     <span className="material-symbols-outlined text-gold font-bold">event_busy</span>
                     <h3 className="text-[11px] uppercase tracking-widest text-stone-500 dark:text-stone-200 font-black">Bloqueios de Agenda (Férias/Viagens)</h3>
@@ -402,7 +456,8 @@ const Profile: React.FC<ProfileProps> = ({
                   )}
                 </div>
 
-                <div className="pt-10 border-t border-gold/10">
+                {/* 3. Horário de Funcionamento */}
+                <div className="pt-10 border-t border-gold/10 space-y-6">
                   <div className="flex items-center gap-2 mb-6">
                     <span className="material-symbols-outlined text-gold font-bold">schedule</span>
                     <h3 className="text-[11px] uppercase tracking-widest text-stone-500 dark:text-stone-200 font-black">Horário de Funcionamento</h3>
@@ -444,63 +499,6 @@ const Profile: React.FC<ProfileProps> = ({
                       );
                     })}
                   </div>
-                </div>
-
-                {/* Reservation List (Original) */}
-                <div className="pt-10 border-t border-gold/10 space-y-6">
-                  <h3 className="text-[11px] uppercase tracking-widest text-stone-500 dark:text-stone-200 font-black">Histórico de Reservas</h3>
-                  {allAppointments.map(app => (
-                    <div key={app.id} className="p-6 bg-white/80 dark:bg-luxury-medium/40 border border-gold/10 rounded-[2rem] space-y-4 shadow-sm transition-all hover:border-gold/30">
-                      <div className="flex items-center justify-between flex-wrap gap-4">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 rounded-2xl bg-gold text-white flex flex-col items-center justify-center font-black">
-                            <span className="text-sm">{app.date}</span>
-                            <span className="text-[7px] uppercase">{(app.month || '').substring(0, 3)}</span>
-                          </div>
-                          <div>
-                            <p className="font-display font-black text-lg text-stone-900 dark:text-parchment-light">{app.clientName}</p>
-                            <p className="text-[10px] uppercase text-gold-dark dark:text-gold-light font-black tracking-widest">{app.serviceName} • {app.time} • {currentYear}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <select
-                            value={app.status}
-                            onChange={(e) => onUpdateAppointment({ ...app, status: e.target.value as any })}
-                            className={`text-[9px] uppercase font-black border-2 rounded-full px-4 py-1.5 bg-transparent outline-none ${getStatusStyle(app.status)}`}
-                          >
-                            <option value="SCHEDULED">Agendado</option>
-                            <option value="COMPLETED">Concluído</option>
-                            <option value="CANCELLED">Cancelado</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {app.status === 'SCHEDULED' && (
-                        <div className="pt-4 border-t border-gold/10 flex flex-wrap gap-3">
-                          <button onClick={() => sendAdminConfirmation(app)} className="px-4 py-2 bg-gold/10 text-gold-dark dark:text-gold-light rounded-xl text-[9px] font-bold uppercase hover:bg-gold/20 transition-all flex items-center gap-1">
-                            Confirmar
-                          </button>
-                          <button onClick={() => sendReminder(app, "24h")} className="px-3 py-2 bg-stone-100 dark:bg-luxury-black text-stone-600 dark:text-stone-300 rounded-xl text-[9px] font-bold uppercase hover:bg-stone-200 transition-all">
-                            Lembrete 24h
-                          </button>
-                          <button onClick={() => sendReminder(app, "12h")} className="px-3 py-2 bg-stone-100 dark:bg-luxury-black text-stone-600 dark:text-stone-300 rounded-xl text-[9px] font-bold uppercase hover:bg-stone-200 transition-all">
-                            Lembrete 12h
-                          </button>
-                          <button onClick={() => sendReminder(app, "2h")} className="px-3 py-2 bg-stone-100 dark:bg-luxury-black text-stone-600 dark:text-stone-300 rounded-xl text-[9px] font-bold uppercase hover:bg-stone-200 transition-all">
-                            Lembrete 2h
-                          </button>
-                          <div className="flex-grow"></div>
-                          <button onClick={() => onRescheduleAppointment(app.id)} className="px-4 py-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-xl text-[9px] font-bold uppercase border border-emerald-500/20 hover:bg-emerald-500/20">
-                            Reagendar
-                          </button>
-                          <button onClick={() => onCancelAppointment(app.id)} className="px-4 py-2 bg-rose-500/10 text-rose-600 dark:text-rose-400 rounded-xl text-[9px] font-bold uppercase border border-rose-500/20 hover:bg-rose-500/20">
-                            Cancelar
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  ))}
                 </div>
               </div>
             )}
@@ -579,6 +577,48 @@ const Profile: React.FC<ProfileProps> = ({
                   <div className="flex items-center gap-2 mb-4">
                     <span className="material-symbols-outlined text-gold text-lg font-bold">calendar_month</span>
                     <h3 className="text-[11px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Gerenciamento de Agenda</h3>
+                  </div>
+
+                  {/* Agendamentos */}
+                  <div>
+                    <div className="flex items-center gap-2 mb-6">
+                      <span className="material-symbols-outlined text-gold/70 text-base">list_alt</span>
+                      <h4 className="text-[10px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Agendamentos Realizados</h4>
+                    </div>
+
+                    <div className="space-y-4">
+                      {allAppointments && allAppointments.length > 0 ? (
+                        [...allAppointments].filter(app => app && app.status !== 'CANCELLED').sort((a, b) => {
+                          const dateA = new Date(a.date + 'T12:00:00').getTime();
+                          const dateB = new Date(b.date + 'T12:00:00').getTime();
+                          return dateB - dateA;
+                        }).map((app: Appointment) => (
+                          <div key={app.id} className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-[2rem] border border-gold/10 shadow-sm flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-xl bg-gold/10 flex flex-col items-center justify-center text-gold">
+                                <span className="text-lg font-black leading-none">{String(app.date).includes('-') ? app.date.split('-')[2] : app.date}</span>
+                                <span className="text-[8px] uppercase font-black">{(app.month || 'Mês').substring(0, 3)}</span>
+                              </div>
+                              <div>
+                                <h5 className="font-bold text-stone-900 dark:text-parchment-light">{app.clientName || 'Cliente'}</h5>
+                                <p className="text-[10px] text-stone-500 dark:text-stone-400 uppercase tracking-widest">{app.time || 'Horário'} • {app.serviceName || 'Serviço'}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-display font-black text-gold-dark dark:text-gold-light italic">{app.price}</p>
+                              <span className={`text-[8px] uppercase font-black px-2 py-1 rounded-full border ${app.status === 'SCHEDULED' ? 'border-gold/30 text-gold' : 'border-emerald-500/30 text-emerald-500'}`}>
+                                {app.status === 'SCHEDULED' ? 'Pendente' : 'Concluído'}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-12 bg-white/50 dark:bg-luxury-black/30 rounded-[2.5rem] border border-gold/10 text-center">
+                          <span className="material-symbols-outlined text-gold/20 text-5xl mb-2">event_busy</span>
+                          <p className="text-stone-500 dark:text-stone-400 italic text-sm">Nenhum agendamento encontrado.</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Bloqueios de Agenda */}
@@ -709,49 +749,6 @@ const Profile: React.FC<ProfileProps> = ({
                         <div className="py-12 text-center">
                           <span className="material-symbols-outlined text-gold/20 text-5xl mb-2">schedule</span>
                           <p className="text-stone-500 dark:text-stone-400 italic text-sm">Configuração de horários ainda não definida.</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Agendamentos */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-6">
-                      <span className="material-symbols-outlined text-gold/70 text-base">list_alt</span>
-                      <h4 className="text-[10px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Agendamentos Realizados</h4>
-                    </div>
-
-                    <div className="space-y-4">
-                      {allAppointments && Array.isArray(allAppointments) && allAppointments.length > 0 ? (
-                        [...allAppointments].filter(app => app && app.status !== 'cancelled').sort((a, b) => {
-                          // Sort by date/time (simple sort for this view)
-                          const dateA = a.date || 0;
-                          const dateB = b.date || 0;
-                          return dateB - dateA;
-                        }).map((app: Appointment) => (
-                          <div key={app.id} className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-[2rem] border border-gold/10 shadow-sm flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-xl bg-gold/10 flex flex-col items-center justify-center text-gold">
-                                <span className="text-lg font-black leading-none">{app.date}</span>
-                                <span className="text-[8px] uppercase font-black">{(app.month || 'Mês').substring(0, 3)}</span>
-                              </div>
-                              <div>
-                                <h5 className="font-bold text-stone-900 dark:text-parchment-light">{app.clientName || 'Cliente'}</h5>
-                                <p className="text-[10px] text-stone-500 dark:text-stone-400 uppercase tracking-widest">{app.time || 'Horário'} • {app.serviceName || 'Serviço'}</p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-display font-black text-gold-dark dark:text-gold-light italic">{app.price}</p>
-                              <span className={`text-[8px] uppercase font-black px-2 py-1 rounded-full border ${app.status === 'SCHEDULED' ? 'border-gold/30 text-gold' : 'border-emerald-500/30 text-emerald-500'}`}>
-                                {app.status === 'SCHEDULED' ? 'Pendente' : 'Concluído'}
-                              </span>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-12 bg-white/50 dark:bg-luxury-black/30 rounded-[2.5rem] border border-gold/10 text-center">
-                          <span className="material-symbols-outlined text-gold/20 text-5xl mb-2">event_busy</span>
-                          <p className="text-stone-500 dark:text-stone-400 italic text-sm">Nenhum agendamento encontrado.</p>
                         </div>
                       )}
                     </div>
@@ -954,12 +951,12 @@ const Profile: React.FC<ProfileProps> = ({
               <div key={app.id} className="bg-white/80 dark:bg-luxury-medium/40 rounded-[2.5rem] border border-gold/10 p-8 shadow-md transition-all hover:border-gold/30">
                 <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
                   <div className="flex items-center gap-5">
-                    <div className="w-16 h-16 rounded-2xl bg-gold text-white flex flex-col items-center justify-center shadow-lg"><span className="text-xl font-black leading-none">{app.date}</span><span className="text-[8px] uppercase font-black mt-1">{app.month.substring(0, 3)}</span></div>
+                    <div className="w-16 h-16 rounded-2xl bg-gold text-white flex flex-col items-center justify-center shadow-lg"><span className="text-xl font-black leading-none">{String(app.date).includes('-') ? app.date.split('-')[2] : app.date}</span><span className="text-[8px] uppercase font-black mt-1">{app.month.substring(0, 3)}</span></div>
                     <div>
                       <h4 className="font-display text-2xl text-stone-900 dark:text-parchment-light font-black">{app.serviceName}</h4>
                       <div className="flex items-center gap-2 mt-2">
                         <span className={`text-[8px] uppercase font-black border-2 rounded-full px-3 py-1 inline-block ${getStatusStyle(app.status)}`}>{app.status}</span>
-                        <span className="text-[8px] uppercase font-black text-stone-500 dark:text-stone-400 tracking-widest ml-2">{currentYear} • {app.time}</span>
+                        <span className="text-[8px] uppercase font-black text-stone-500 dark:text-stone-400 tracking-widest ml-2">{app.date.split('-')[0]} • {app.time}</span>
                       </div>
                     </div>
                   </div>

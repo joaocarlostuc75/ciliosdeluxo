@@ -51,7 +51,10 @@ const App: React.FC = () => {
   const currentMonthName = monthNames[currentMonthIndex];
 
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
-  const [selectedDate, setSelectedDate] = useState<number>(currentDay);
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const d = new Date();
+    return d.toISOString().split('T')[0];
+  });
   const [selectedTime, setSelectedTime] = useState<string>('10:00');
   const [availableDays, setAvailableDays] = useState<number[]>([]);
   const [reschedulingId, setReschedulingId] = useState<string | null>(null);
@@ -304,7 +307,7 @@ const App: React.FC = () => {
   const handleCancelAppointment = async (id: string) => {
     const app = allAppointments.find(a => a.id === id);
     if (app) {
-      handleUpdateAppointment({ ...app, status: 'cancelled' });
+      handleUpdateAppointment({ ...app, status: 'CANCELLED' });
     }
   };
 
@@ -383,10 +386,9 @@ const App: React.FC = () => {
     await supabase.from('agenda_blocks').delete().eq('id', id);
   };
 
-  const checkAvailability = (date: number, time: string, serviceId: string, excludeId?: string | null) => {
-    const dateObj = new Date(currentYear, currentMonthIndex, date);
+  const checkAvailability = (dateStr: string, time: string, serviceId: string, excludeId?: string | null) => {
+    const dateObj = new Date(dateStr + 'T12:00:00');
     const weekDay = dateObj.getDay();
-    const dateStr = dateObj.toISOString().split('T')[0];
 
     // Check Business Hours
     const dayConfig = studio.businessHours?.find(h => h.dayOfWeek === weekDay);
@@ -403,7 +405,7 @@ const App: React.FC = () => {
     if (isBlocked) return false;
 
     return !allAppointments.some(a =>
-      a.date === date &&
+      a.date === dateStr &&
       a.month === currentMonthName &&
       a.time === time &&
       a.serviceId === serviceId &&
@@ -425,23 +427,36 @@ const App: React.FC = () => {
       setReschedulingId(null);
     }
 
+    // Safety check: Ensure date is in YYYY-MM-DD format
+    let finalDate = app.date;
+    if (!String(finalDate).includes('-')) {
+      console.warn('Date received is not in ISO format:', finalDate);
+      const dayNum = parseInt(String(finalDate));
+      if (!isNaN(dayNum)) {
+        const d = new Date(currentYear, currentMonthIndex, dayNum);
+        finalDate = d.toISOString().split('T')[0];
+        console.log('Reconstructed date:', finalDate);
+      } else {
+        throw new Error('Formato de data inválido para o agendamento.');
+      }
+    }
+
+    console.log('Saving appointment with date:', finalDate);
+
     // Save to Supabase
     const { data, error } = await supabase.from('appointments').insert({
       service_id: app.serviceId,
       service_name: app.serviceName,
       client_name: app.clientName,
       client_whatsapp: app.clientWhatsapp,
-      date: app.date,
-      // month: app.month, // REMOVED - column doesn't exist in DB
+      date: finalDate,
       time: app.time,
       status: app.status
-      // price: app.price // REMOVED - column doesn't exist in DB (price is in services table)
     }).select().single();
 
     if (error) {
       console.error('Error saving appointment:', error);
-      alert(`Erro ao salvar agendamento: ${error.message}\nDetalhes: ${error.details || 'N/A'}`);
-      return;
+      throw error; // Throw so Confirmation.tsx can catch it
     }
 
     const savedApp = { ...app, id: data.id };
@@ -561,8 +576,11 @@ const App: React.FC = () => {
             services={services}
             onConfirm={() => setCurrentPage(Page.CONFIRMATION)}
             selectedService={selectedService}
-            selectedDate={selectedDate}
-            setSelectedDate={setSelectedDate}
+            selectedDate={parseInt(selectedDate.split('-')[2])}
+            setSelectedDate={(day) => {
+              const newDate = new Date(currentYear, currentMonthIndex, day);
+              setSelectedDate(newDate.toISOString().split('T')[0]);
+            }}
             selectedTime={selectedTime}
             setSelectedTime={setSelectedTime}
             setSelectedServiceId={setSelectedServiceId}
@@ -630,7 +648,11 @@ const App: React.FC = () => {
             selectedDate={selectedDate}
             selectedTime={selectedTime}
             onConfirmBooking={handleAddAppointment}
-            checkAvailability={(d, t, s) => checkAvailability(d, t, s, reschedulingId)}
+            checkAvailability={(d, t, s) => {
+              // d is coming as number from Confirmation? No, Confirmation expects selectedDate: string.
+              // Let's check Confirmation.tsx props again.
+              return checkAvailability(selectedDate, t, s, reschedulingId);
+            }}
             onFinish={() => setCurrentPage(Page.HOME)}
             currentMonthName={currentMonthName}
             currentYear={currentYear}
