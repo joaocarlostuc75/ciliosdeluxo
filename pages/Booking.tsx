@@ -8,7 +8,7 @@ interface BookingProps {
   services: Service[];
   onConfirm: () => void;
   selectedService: Service | null;
-  selectedDate: number;
+  selectedDate: number; // Day of month
   setSelectedDate: (day: number) => void;
   selectedTime: string;
   setSelectedTime: (time: string) => void;
@@ -17,6 +17,8 @@ interface BookingProps {
   currentMonthName: string;
   currentYear: number;
   currentMonthIndex: number;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
 }
 
 const Booking: React.FC<BookingProps> = ({
@@ -32,7 +34,9 @@ const Booking: React.FC<BookingProps> = ({
   availableDays,
   currentMonthName,
   currentYear,
-  currentMonthIndex
+  currentMonthIndex,
+  onPrevMonth,
+  onNextMonth
 }) => {
   const activeServiceId = selectedService?.id || services[0]?.id;
 
@@ -117,10 +121,19 @@ const Booking: React.FC<BookingProps> = ({
                 <span className="w-8 h-8 rounded-full bg-gold/20 text-gold-dark dark:text-gold-light flex items-center justify-center text-xs font-black">02</span>
                 Selecione a Data
               </h3>
-              <span className="text-gold-dark dark:text-gold-light text-xs font-black font-display italic uppercase">
-                {currentMonthName} {currentYear}
-              </span>
+              <div className="flex items-center gap-4">
+                <button onClick={onPrevMonth} className="w-8 h-8 rounded-full border border-gold/20 flex items-center justify-center text-gold hover:bg-gold/10 transition-colors">
+                  <span className="material-symbols-outlined text-sm">chevron_left</span>
+                </button>
+                <span className="text-gold-dark dark:text-gold-light text-xs font-black font-display italic uppercase min-w-[120px] text-center">
+                  {currentMonthName} {currentYear}
+                </span>
+                <button onClick={onNextMonth} className="w-8 h-8 rounded-full border border-gold/20 flex items-center justify-center text-gold hover:bg-gold/10 transition-colors">
+                  <span className="material-symbols-outlined text-sm">chevron_right</span>
+                </button>
+              </div>
             </div>
+
             <div className="bg-white/80 dark:bg-luxury-medium/40 p-10 rounded-[3rem] border border-gold/10 grid grid-cols-7 gap-4 md:gap-6 text-center backdrop-blur-xl shadow-sm">
               {['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((d, i) => (
                 <span key={i} className="text-[10px] text-stone-400 dark:text-stone-500 font-black opacity-60">{d}</span>

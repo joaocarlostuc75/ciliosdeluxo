@@ -1,7 +1,6 @@
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { ErrorBoundary } from '../components/ErrorBoundary';
-import { User, Appointment, Page, Service, Client } from '../types';
+import { User, Appointment, Page, Service, Client, BusinessHours, AgendaBlock } from '../types';
 
 interface ProfileProps {
   studio: User;
@@ -16,7 +15,6 @@ interface ProfileProps {
   isAdmin: boolean;
   setIsAdmin: (isAdmin: boolean) => void;
   onNavigate: (page: Page) => void;
-  // CRUD Actions
   onUpdateService: (s: Service) => void;
   onDeleteService: (id: string) => void;
   onAddService: (s: Service) => void;
@@ -27,14 +25,14 @@ interface ProfileProps {
   onAddClient: (c: Client) => void;
   onCancelAppointment: (id: string) => void;
   onRescheduleAppointment: (id: string) => void;
-  onUpdateBusinessHours: (hours: any[]) => void;
-  onAddBlock: (block: any) => void;
+  onUpdateBusinessHours: (hours: BusinessHours[]) => void;
+  onAddBlock: (block: AgendaBlock) => void;
   onDeleteBlock: (id: string) => void;
   currentYear: number;
-  // Password Management
   adminPassword?: string;
   setAdminPassword?: (pass: string) => void;
   onUpdateProfile?: (studio: User) => void;
+  onClearSystem?: () => void;
 }
 
 const Profile: React.FC<ProfileProps> = ({
@@ -47,7 +45,8 @@ const Profile: React.FC<ProfileProps> = ({
   onUpdateBusinessHours, onAddBlock, onDeleteBlock,
   currentYear,
   adminPassword, setAdminPassword,
-  onUpdateProfile
+  onUpdateProfile,
+  onClearSystem
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'history' | 'admin_dashboard'>(isAdmin ? 'admin_dashboard' : 'profile');
   const [adminSection, setAdminSection] = useState<'stats' | 'services' | 'clients' | 'agenda' | 'settings'>(() => {
@@ -62,13 +61,11 @@ const Profile: React.FC<ProfileProps> = ({
   }, [adminSection, isAdmin]);
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
 
-  // Password Change State
   const [currentPassInput, setCurrentPassInput] = useState('');
   const [newPassInput, setNewPassInput] = useState('');
   const [confirmPassInput, setConfirmPassInput] = useState('');
   const [passwordMsg, setPasswordMsg] = useState('');
 
-  // Agenda Settings State
   const [newBlockStart, setNewBlockStart] = useState('');
   const [newBlockEnd, setNewBlockEnd] = useState('');
   const [newBlockReason, setNewBlockReason] = useState('');
@@ -110,57 +107,22 @@ const Profile: React.FC<ProfileProps> = ({
     const file = event.target.files?.[0];
     if (file) {
       try {
-        // Compress image to max 200x200px with 0.7 quality
-        const compressed = await compressImage(file, 200, 200, 0.7);
-        if (isAdmin) setStudio({ ...studio, image: compressed });
-        else setClient({ ...client, image: compressed });
-      } catch (error) {
-        console.error('Error compressing image:', error);
-        alert('Erro ao processar imagem. Tente uma imagem menor.');
-      }
-    }
-  };
-
-  // Helper function to compress images
-  const compressImage = (file: File, maxWidth: number = 200, maxHeight: number = 200, quality: number = 0.7): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
+        const canvas = document.createElement('canvas');
         const img = new Image();
-        img.src = event.target?.result as string;
+        img.src = URL.createObjectURL(file);
         img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-
-          // Calculate new dimensions while maintaining aspect ratio
-          if (width > height) {
-            if (width > maxWidth) {
-              height = (height * maxWidth) / width;
-              width = maxWidth;
-            }
-          } else {
-            if (height > maxHeight) {
-              width = (width * maxHeight) / height;
-              height = maxHeight;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-
-          // Convert to base64 with compression
-          const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-          resolve(compressedBase64);
+          const maxWidth = 200, maxHeight = 200;
+          let width = img.width, height = img.height;
+          if (width > height) { if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; } }
+          else { if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; } }
+          canvas.width = width; canvas.height = height;
+          canvas.getContext('2d')?.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.7);
+          if (isAdmin) setStudio({ ...studio, image: compressed });
+          else setClient({ ...client, image: compressed });
         };
-        img.onerror = reject;
-      };
-      reader.onerror = reject;
-    });
+      } catch (e) { console.error(e); }
+    }
   };
 
   const handleServiceImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -170,9 +132,7 @@ const Profile: React.FC<ProfileProps> = ({
       reader.onloadend = () => {
         const imageData = reader.result as string;
         const service = services.find(s => s.id === editingServiceId);
-        if (service) {
-          onUpdateService({ ...service, image: imageData });
-        }
+        if (service) onUpdateService({ ...service, image: imageData });
         setEditingServiceId(null);
       };
       reader.readAsDataURL(file);
@@ -180,37 +140,26 @@ const Profile: React.FC<ProfileProps> = ({
   };
 
   const handleChangePassword = () => {
-    if (currentPassInput !== adminPassword) {
-      setPasswordMsg('A senha atual está incorreta.');
-      return;
-    }
-    if (newPassInput.length < 6) {
-      setPasswordMsg('A nova senha deve ter pelo menos 6 caracteres.');
-      return;
-    }
-    if (newPassInput !== confirmPassInput) {
-      setPasswordMsg('A nova senha e a confirmação não coincidem.');
-      return;
-    }
-
+    if (currentPassInput !== adminPassword) { setPasswordMsg('A senha atual está incorreta.'); return; }
+    if (newPassInput.length < 6) { setPasswordMsg('A nova senha deve ter pelo menos 6 caracteres.'); return; }
+    if (newPassInput !== confirmPassInput) { setPasswordMsg('A nova senha e a confirmação não coincidem.'); return; }
     if (setAdminPassword) {
       setAdminPassword(newPassInput);
       setPasswordMsg('Senha alterada com sucesso!');
-      setCurrentPassInput('');
-      setNewPassInput('');
-      setConfirmPassInput('');
+      setCurrentPassInput(''); setNewPassInput(''); setConfirmPassInput('');
     }
   };
 
   const sendReminder = (app: Appointment, hours: string) => {
     const cleanNumber = app.clientWhatsapp.replace(/\D/g, '');
-    let text = `✨ *Lembrete de Luxo!* ✨\n\nOlá ${app.clientName}, passando para lembrar do seu procedimento de *${app.serviceName}* daqui a *${hours}*!\n\n📅 Data: ${app.date} de ${app.month}\n⏰ Horário: ${app.time}\n\nEstamos ansiosas para te ver! 💖`;
+    const dateFormatted = String(app.date).includes('-') ? app.date.split('-').reverse().join('/') : app.date;
+    let text = `✨ *Lembrete: Seu Momento de Luxo está chegando!* ✨\n\nOlá, *${app.clientName}*! Tudo bem?\n\nPassando para confirmar seu agendamento de *${app.serviceName}* conosco:\n\n📅 *Data:* ${dateFormatted}\n⏰ *Horário:* ${app.time}\n📍 *Local:* ${studio.address}\n\nEstamos ansiosos para te proporcionar uma experiência incrível!\n\n_Att., Equipe Cílios de Luxo_`;
     window.open(`https://wa.me/${cleanNumber}?text=${encodeURIComponent(text)}`);
   };
 
   const sendAdminConfirmation = (app: Appointment) => {
     const cleanNumber = app.clientWhatsapp.replace(/\D/g, '');
-    let text = `✅ *Confirmação Cílios de Luxo* ✅\n\nOlá ${app.clientName}, seu agendamento de *${app.serviceName}* para o dia ${app.date} de ${app.month} às ${app.time} foi confirmado com sucesso!\n\nAté logo! ✨`;
+    let text = `✅ *Confirmação Cílios de Luxo* ✅\n\nOlá ${app.clientName}, seu agendamento de *${app.serviceName}* para o dia ${app.date} às ${app.time} foi confirmado com sucesso!\n\nAté logo! ✨`;
     window.open(`https://wa.me/${cleanNumber}?text=${encodeURIComponent(text)}`);
   };
 
@@ -230,8 +179,8 @@ const Profile: React.FC<ProfileProps> = ({
 
       <div className="flex-grow">
         <header className="flex flex-col items-center mb-10">
-          <div className="relative group">
-            <div onClick={() => fileInputRef.current?.click()} className="w-28 h-28 rounded-full border-2 border-gold p-1 shadow-2xl relative overflow-hidden bg-parchment-light dark:bg-luxury-medium flex items-center justify-center cursor-pointer transition-all">
+          <div className="relative group" onClick={() => fileInputRef.current?.click()}>
+            <div className="w-28 h-28 rounded-full border-2 border-gold p-1 shadow-2xl relative overflow-hidden bg-parchment-light dark:bg-luxury-medium flex items-center justify-center cursor-pointer transition-all">
               {(isAdmin ? studio.image : client.image) ? (
                 <img src={isAdmin ? studio.image : client.image} alt="Avatar" className="w-full h-full object-cover" />
               ) : (
@@ -271,11 +220,7 @@ const Profile: React.FC<ProfileProps> = ({
                 { id: 'clients', label: 'Clientes', icon: 'group' },
                 { id: 'settings', label: 'Perfil', icon: 'storefront' },
               ].map(sec => (
-                <button
-                  key={sec.id}
-                  onClick={() => setAdminSection(sec.id as any)}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-full border text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${adminSection === sec.id ? 'bg-gold border-gold text-white shadow-lg' : 'bg-white/60 dark:bg-luxury-medium/40 border-gold/10 text-stone-500 dark:text-stone-200'}`}
-                >
+                <button key={sec.id} onClick={() => setAdminSection(sec.id as any)} className={`flex items-center gap-2 px-6 py-3 rounded-full border text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${adminSection === sec.id ? 'bg-gold border-gold text-white shadow-lg' : 'bg-white/60 dark:bg-luxury-medium/40 border-gold/10 text-stone-500 dark:text-stone-200'}`}>
                   <span className="material-symbols-outlined text-sm font-bold">{sec.icon}</span>
                   {sec.label}
                 </button>
@@ -286,31 +231,16 @@ const Profile: React.FC<ProfileProps> = ({
               <div className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="p-6 bg-gold/10 border border-gold/20 rounded-3xl text-center backdrop-blur-sm">
-                    <span className="text-[9px] uppercase tracking-widest text-stone-600 dark:text-stone-300 block mb-1 font-black">Faturamento Realizado</span>
-                    <span className="text-3xl font-display text-emerald-700 dark:text-emerald-400 block font-black">R$ {stats.totalRevenue.toFixed(2)}</span>
+                    <span className="text-[9px] uppercase tracking-widest text-stone-600 block mb-1 font-black">Faturamento Realizado</span>
+                    <span className="text-3xl font-display text-emerald-700 block font-black">R$ {stats.totalRevenue.toFixed(2)}</span>
                   </div>
                   <div className="p-6 bg-gold/10 border border-gold/20 rounded-3xl text-center backdrop-blur-sm">
-                    <span className="text-[9px] uppercase tracking-widest text-stone-600 dark:text-stone-300 block mb-1 font-black">Faturamento Previsto</span>
-                    <span className="text-3xl font-display text-gold-dark dark:text-gold-light block font-black">R$ {stats.pendingRevenue.toFixed(2)}</span>
+                    <span className="text-[9px] uppercase tracking-widest text-stone-600 block mb-1 font-black">Faturamento Previsto</span>
+                    <span className="text-3xl font-display text-gold-dark block font-black">R$ {stats.pendingRevenue.toFixed(2)}</span>
                   </div>
                   <div className="p-6 bg-gold/10 border border-gold/20 rounded-3xl text-center backdrop-blur-sm">
-                    <span className="text-[9px] uppercase tracking-widest text-stone-600 dark:text-stone-300 block mb-1 font-black">Ticket Médio</span>
-                    <span className="text-3xl font-display text-stone-900 dark:text-parchment-light block font-black">R$ {stats.ticketMedio.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                <div className="bg-white/80 dark:bg-luxury-medium/40 border border-gold/10 p-8 rounded-[3rem] shadow-sm">
-                  <h4 className="font-display text-xl text-stone-900 dark:text-parchment-light mb-8 italic font-bold">Técnicas mais Populares</h4>
-                  <div className="space-y-6">
-                    {stats.popularServices.map(s => (
-                      <div key={s.name} className="flex items-center gap-6">
-                        <span className="text-[10px] text-stone-700 dark:text-stone-200 uppercase tracking-widest font-black whitespace-nowrap min-w-[130px]">{s.name}</span>
-                        <div className="flex-grow bg-stone-200 dark:bg-luxury-black h-2.5 rounded-full overflow-hidden max-w-[180px]">
-                          <div className="bg-gold h-full rounded-full transition-all duration-1000 shadow-[0_0_10px_rgba(197,160,89,0.3)]" style={{ width: `${(s.count / Math.max(...stats.popularServices.map(ps => ps.count), 1)) * 100}%` }}></div>
-                        </div>
-                        <span className="text-xs font-black text-gold-dark dark:text-gold-light">{s.count}</span>
-                      </div>
-                    ))}
+                    <span className="text-[9px] uppercase tracking-widest text-stone-600 block mb-1 font-black">Ticket Médio</span>
+                    <span className="text-3xl font-display text-stone-900 block font-black">R$ {stats.ticketMedio.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -319,27 +249,21 @@ const Profile: React.FC<ProfileProps> = ({
             {adminSection === 'services' && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-[11px] uppercase tracking-widest text-stone-500 dark:text-stone-200 font-black">Catálogo de Serviços</h3>
+                  <h3 className="text-[11px] uppercase tracking-widest text-stone-500 font-black">Catálogo de Serviços</h3>
                   <button onClick={() => onAddService({ id: Date.now().toString(), name: 'Nova Técnica', price: 'R$ 130,00', description: '', longDescription: '', duration: '2h', maintenance: '20 dias', image: 'https://picsum.photos/seed/new/600/800' })} className="px-6 py-3 gold-gradient text-white text-[9px] font-black uppercase rounded-full shadow-lg">Novo Serviço</button>
                 </div>
                 {services.map(s => (
                   <div key={s.id} className="p-6 bg-white/80 dark:bg-luxury-medium/40 border border-gold/10 rounded-[2rem] flex items-center justify-between group shadow-sm transition-all hover:border-gold/30">
                     <div className="flex items-center gap-6 flex-grow">
-                      <div className="relative group/img cursor-pointer" onClick={() => { setEditingServiceId(s.id); serviceImageInputRef.current?.click(); }}>
+                      <div className="relative cursor-pointer" onClick={() => { setEditingServiceId(s.id); serviceImageInputRef.current?.click(); }}>
                         <img src={s.image} className="w-16 h-16 rounded-2xl object-cover border-2 border-gold/10" alt={s.name} />
-                        <div className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
-                          <span className="material-symbols-outlined text-white text-sm">photo_camera</span>
-                        </div>
                       </div>
                       <div className="flex flex-col flex-grow">
-                        <input className="font-display text-lg font-bold bg-transparent text-stone-900 dark:text-parchment-light outline-none w-full focus:text-gold-dark dark:focus:text-gold-light" value={s.name} onChange={(e) => onUpdateService({ ...s, name: e.target.value })} />
-                        <input className="text-[10px] text-gold-dark dark:text-gold-light uppercase tracking-widest font-black bg-transparent outline-none" value={s.price} onChange={(e) => onUpdateService({ ...s, price: e.target.value })} />
-                        <input className="text-[9px] text-stone-500 dark:text-stone-400 bg-transparent outline-none mt-1 w-full" value={s.description} onChange={(e) => onUpdateService({ ...s, description: e.target.value })} placeholder="Breve descrição..." />
+                        <input className="font-display text-lg font-bold bg-transparent text-stone-900 dark:text-parchment-light outline-none" value={s.name} onChange={(e) => onUpdateService({ ...s, name: e.target.value })} />
+                        <input className="text-[10px] text-gold-dark uppercase tracking-widest font-black bg-transparent outline-none" value={s.price} onChange={(e) => onUpdateService({ ...s, price: e.target.value })} />
                       </div>
                     </div>
-                    <button onClick={() => onDeleteService(s.id)} className="text-stone-400 hover:text-red-500 transition-colors p-2">
-                      <span className="material-symbols-outlined font-bold">delete</span>
-                    </button>
+                    <button onClick={() => onDeleteService(s.id)} className="text-stone-400 hover:text-red-500 p-2"><span className="material-symbols-outlined">delete</span></button>
                   </div>
                 ))}
               </div>
@@ -347,157 +271,166 @@ const Profile: React.FC<ProfileProps> = ({
 
             {adminSection === 'agenda' && (
               <div className="space-y-12">
-                {/* 1. Agendamentos Realizados/Histórico */}
                 <div className="space-y-6">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="material-symbols-outlined text-gold/70 text-base">list_alt</span>
-                    <h3 className="text-[11px] uppercase tracking-widest text-stone-500 dark:text-stone-200 font-black">Agendamentos Realizados</h3>
+                    <h3 className="text-[11px] uppercase tracking-widest text-stone-500 font-black">Agendamentos Realizados</h3>
                   </div>
-
                   <div className="space-y-4">
                     {allAppointments && allAppointments.length > 0 ? (
-                      [...allAppointments].filter(app => app && app.status !== 'CANCELLED').sort((a, b) => {
-                        const dateA = new Date(a.date + 'T12:00:00').getTime();
-                        const dateB = new Date(b.date + 'T12:00:00').getTime();
-                        return dateB - dateA;
-                      }).map((app: Appointment) => (
-                        <div key={app.id} className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-[2rem] border border-gold/10 shadow-sm flex items-center justify-between transition-all hover:border-gold/30">
-                          <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-gold/10 flex flex-col items-center justify-center text-gold">
-                              <span className="text-lg font-black leading-none">{String(app.date).includes('-') ? app.date.split('-')[2] : app.date}</span>
-                              <span className="text-[8px] uppercase font-black">{(app.month || 'Mês').substring(0, 3)}</span>
+                      [...allAppointments].filter(app => app.status !== 'CANCELLED').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(app => (
+                        <div key={app.id} className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-[2rem] border border-gold/10 shadow-sm transition-all hover:border-gold/30">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 rounded-xl bg-gold/10 flex flex-col items-center justify-center text-gold">
+                                <span className="text-lg font-black">{app.date.split('-')[2]}</span>
+                                <span className="text-[8px] uppercase">{app.month.substring(0, 3)}</span>
+                              </div>
+                              <div>
+                                <h5 className="font-bold text-stone-900 dark:text-parchment-light">{app.clientName}</h5>
+                                <p className="text-[10px] text-stone-500 uppercase">{app.time} • {app.serviceName}</p>
+                              </div>
                             </div>
-                            <div>
-                              <h5 className="font-bold text-stone-900 dark:text-parchment-light">{app.clientName || 'Cliente'}</h5>
-                              <p className="text-[10px] text-stone-500 dark:text-stone-400 uppercase tracking-widest">{app.time || 'Horário'} • {app.serviceName || 'Serviço'}</p>
+                            <div className="flex items-center gap-2">
+                              <select value={app.status} onChange={(e) => onUpdateAppointment({ ...app, status: e.target.value as any })} className={`text-[9px] uppercase font-black border-2 rounded-full px-4 py-1.5 bg-transparent ${getStatusStyle(app.status)}`}>
+                                <option value="SCHEDULED">Agendado</option>
+                                <option value="COMPLETED">Concluído</option>
+                                <option value="CANCELLED">Cancelado</option>
+                              </select>
+                              <button onClick={() => onRescheduleAppointment(app.id)} className="text-emerald-500 p-2"><span className="material-symbols-outlined text-sm">edit_calendar</span></button>
+                              <button onClick={() => onCancelAppointment(app.id)} className="text-rose-400 p-2"><span className="material-symbols-outlined text-sm">block</span></button>
+                              <button onClick={() => onDeleteAppointment(app.id)} className="text-stone-400 p-2"><span className="material-symbols-outlined text-sm">delete</span></button>
                             </div>
                           </div>
-
-                          <div className="flex items-center gap-4">
-                            <select
-                              value={app.status}
-                              onChange={(e) => onUpdateAppointment({ ...app, status: e.target.value as any })}
-                              className={`text-[9px] uppercase font-black border-2 rounded-full px-4 py-1.5 bg-transparent outline-none ${getStatusStyle(app.status)}`}
-                            >
-                              <option value="SCHEDULED">Agendado</option>
-                              <option value="COMPLETED">Concluído</option>
-                              <option value="CANCELLED">Cancelado</option>
-                            </select>
-
-                            {app.status === 'SCHEDULED' && (
-                              <button onClick={() => onCancelAppointment(app.id)} className="text-rose-400 hover:text-rose-600 p-2">
-                                <span className="material-symbols-outlined text-sm font-bold">cancel</span>
-                              </button>
-                            )}
-                          </div>
+                          {app.status === 'SCHEDULED' && (
+                            <div className="mt-4 pt-4 border-t border-gold/5 flex gap-2 justify-end items-center">
+                              <span className="text-[8px] uppercase font-black text-stone-400 mr-2">Enviar Lembrete:</span>
+                              <button onClick={() => sendReminder(app, '48h')} className="px-3 py-1 bg-stone-100 rounded text-[8px] font-bold uppercase hover:bg-gold/10">48h</button>
+                              <button onClick={() => sendReminder(app, '24h')} className="px-3 py-1 bg-stone-100 rounded text-[8px] font-bold uppercase hover:bg-gold/10">24h</button>
+                              <button onClick={() => sendReminder(app, '2h')} className="px-3 py-1 bg-stone-100 rounded text-[8px] font-bold uppercase hover:bg-gold/10">2h</button>
+                              <button onClick={() => sendAdminConfirmation(app)} className="px-3 py-1 bg-emerald-500/10 text-emerald-600 rounded text-[8px] font-bold uppercase flex items-center gap-1"><span className="material-symbols-outlined text-[10px]">check</span> Confirmar</button>
+                            </div>
+                          )}
                         </div>
                       ))
                     ) : (
-                      <div className="p-12 bg-white/50 dark:bg-luxury-black/30 rounded-[2.5rem] border border-gold/10 text-center">
-                        <span className="material-symbols-outlined text-gold/20 text-5xl mb-2">event_busy</span>
-                        <p className="text-stone-500 dark:text-stone-400 italic text-sm">Nenhum agendamento encontrado.</p>
-                      </div>
+                      <div className="p-12 text-center text-stone-400 italic">Nenhum agendamento encontrado.</div>
                     )}
                   </div>
                 </div>
 
-                {/* 2. Bloqueios de Agenda */}
-                <div className="pt-10 border-t border-gold/10 space-y-6">
-                  <div className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-gold font-bold">event_busy</span>
-                    <h3 className="text-[11px] uppercase tracking-widest text-stone-500 dark:text-stone-200 font-black">Bloqueios de Agenda (Férias/Viagens)</h3>
+                <div className="space-y-6 pt-12 border-t border-gold/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="material-symbols-outlined text-gold/70 text-base">schedule</span>
+                    <h3 className="text-[11px] uppercase tracking-widest text-stone-500 font-black">Horários de Funcionamento</h3>
                   </div>
-
-                  <div className="p-8 bg-white/80 dark:bg-luxury-medium/40 border border-gold/10 rounded-[2.5rem] shadow-sm">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black ml-1">Data Início</label>
-                        <input type="date" value={newBlockStart} onChange={(e) => setNewBlockStart(e.target.value)} className="w-full bg-white dark:bg-luxury-black/50 border border-gold/20 rounded-xl px-4 py-3 outline-none focus:border-gold transition-all text-sm" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black ml-1">Data Fim</label>
-                        <input type="date" value={newBlockEnd} onChange={(e) => setNewBlockEnd(e.target.value)} className="w-full bg-white dark:bg-luxury-black/50 border border-gold/20 rounded-xl px-4 py-3 outline-none focus:border-gold transition-all text-sm" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black ml-1">Motivo (Opcional)</label>
-                        <input type="text" value={newBlockReason} onChange={(e) => setNewBlockReason(e.target.value)} placeholder="Ex: Férias, Reforma..." className="w-full bg-white dark:bg-luxury-black/50 border border-gold/20 rounded-xl px-4 py-3 outline-none focus:border-gold transition-all text-sm" />
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        if (newBlockStart && newBlockEnd) {
-                          onAddBlock({ id: Date.now().toString(), startDate: newBlockStart, endDate: newBlockEnd, reason: newBlockReason || 'Ausência' });
-                          setNewBlockStart(''); setNewBlockEnd(''); setNewBlockReason('');
-                        }
-                      }}
-                      className="mt-6 w-full py-4 gold-gradient text-white text-[10px] font-black uppercase rounded-2xl shadow-lg"
-                    >
-                      Adicionar Período de Bloqueio
-                    </button>
-                  </div>
-
-                  {studio.blocks && studio.blocks.length > 0 && (
-                    <div className="grid grid-cols-1 gap-3">
-                      {studio.blocks.map(block => (
-                        <div key={block.id} className="p-5 bg-stone-50 dark:bg-luxury-black/40 border border-stone-200 dark:border-stone-800 rounded-[1.5rem] flex items-center justify-between">
-                          <div className="flex items-center gap-4">
-                            <span className="material-symbols-outlined text-rose-500 font-bold">block</span>
-                            <div>
-                              <p className="font-bold text-sm text-stone-900 dark:text-parchment-light">{block.reason}</p>
-                              <p className="text-[10px] uppercase text-stone-500 font-black tracking-widest">{new Date(block.startDate + 'T12:00:00').toLocaleDateString('pt-BR')} até {new Date(block.endDate + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
-                            </div>
-                          </div>
-                          <button onClick={() => onDeleteBlock(block.id)} className="text-stone-400 hover:text-red-500 transition-colors p-2">
-                            <span className="material-symbols-outlined text-sm font-bold">delete</span>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* 3. Horário de Funcionamento */}
-                <div className="pt-10 border-t border-gold/10 space-y-6">
-                  <div className="flex items-center gap-2 mb-6">
-                    <span className="material-symbols-outlined text-gold font-bold">schedule</span>
-                    <h3 className="text-[11px] uppercase tracking-widest text-stone-500 dark:text-stone-200 font-black">Horário de Funcionamento</h3>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4">
-                    {['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'].map((day, idx) => {
-                      const dayNum = idx === 6 ? 0 : idx + 1;
-                      const config = studio.businessHours?.find(h => h.dayOfWeek === dayNum);
+                  <p className="text-[10px] text-stone-400 font-bold -mt-4 mb-4">Configure os horários de funcionamento do estabelecimento.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map((day, i) => {
+                      const hourConfig = studio.businessHours?.find(h => h.dayOfWeek === i) || { dayOfWeek: i, isOpen: false, slots: [] };
                       return (
-                        <div key={day} className="p-6 bg-white/80 dark:bg-luxury-medium/40 border border-gold/10 rounded-3xl flex items-center justify-between">
+                        <div key={i} className="p-4 bg-white/60 dark:bg-luxury-medium/20 rounded-2xl border border-gold/5 flex items-center justify-between">
+                          <span className="text-[10px] uppercase font-black text-stone-600">{day}</span>
                           <div className="flex items-center gap-4">
-                            <div className={`w-3 h-3 rounded-full ${config?.isOpen ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-red-500'}`}></div>
-                            <span className="text-[11px] uppercase tracking-widest font-black text-stone-700 dark:text-stone-200">{day}</span>
-                          </div>
-                          <div className="flex items-center gap-6">
-                            {config?.isOpen ? (
-                              <div className="flex items-center gap-2">
-                                {config.slots.map((slot, sIdx) => (
-                                  <span key={sIdx} className="bg-gold/10 text-gold-dark dark:text-gold-light px-3 py-1 rounded-lg text-[10px] font-black border border-gold/20">
-                                    {slot.start} - {slot.end}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <span className="text-[10px] uppercase font-black text-stone-400">Fechado</span>
-                            )}
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input type="checkbox" checked={config?.isOpen || false} onChange={(e) => {
-                                const newHours = studio.businessHours?.map(h =>
-                                  h.dayOfWeek === dayNum ? { ...h, isOpen: e.target.checked } : h
-                                ) || [];
+                            <button
+                              onClick={() => {
+                                const newHours = [...(studio.businessHours || [])];
+                                const idx = newHours.findIndex(h => h.dayOfWeek === i);
+                                if (idx >= 0) {
+                                  newHours[idx] = { ...newHours[idx], isOpen: !newHours[idx].isOpen };
+                                } else {
+                                  newHours.push({ dayOfWeek: i, isOpen: true, slots: [{ start: '09:00', end: '18:00' }] });
+                                }
                                 onUpdateBusinessHours(newHours);
-                              }} className="sr-only peer" />
-                              <div className="w-9 h-5 bg-stone-200 peer-focus:outline-none dark:bg-luxury-black peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-gold rounded-full"></div>
-                            </label>
+                              }}
+                              className={`px-3 py-1 rounded-full text-[8px] font-black uppercase transition-all ${hourConfig.isOpen ? 'bg-emerald-500/10 text-emerald-600 border border-emerald-500/20' : 'bg-stone-100 text-stone-400 border border-stone-200'}`}
+                            >
+                              {hourConfig.isOpen ? 'Aberto' : 'Fechado'}
+                            </button>
+                            {hourConfig.isOpen && (
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="time"
+                                  value={hourConfig.slots[0]?.start || '09:00'}
+                                  onChange={(e) => {
+                                    const newHours = [...(studio.businessHours || [])];
+                                    const idx = newHours.findIndex(h => h.dayOfWeek === i);
+                                    if (idx >= 0) {
+                                      const newSlots = [...newHours[idx].slots];
+                                      newSlots[0] = { ...newSlots[0], start: e.target.value };
+                                      newHours[idx] = { ...newHours[idx], slots: newSlots };
+                                      onUpdateBusinessHours(newHours);
+                                    }
+                                  }}
+                                  className="bg-transparent text-[10px] font-bold outline-none text-stone-600"
+                                />
+                                <span className="text-stone-400">-</span>
+                                <input
+                                  type="time"
+                                  value={hourConfig.slots[0]?.end || '18:00'}
+                                  onChange={(e) => {
+                                    const newHours = [...(studio.businessHours || [])];
+                                    const idx = newHours.findIndex(h => h.dayOfWeek === i);
+                                    if (idx >= 0) {
+                                      const newSlots = [...newHours[idx].slots];
+                                      newSlots[0] = { ...newSlots[0], end: e.target.value };
+                                      newHours[idx] = { ...newHours[idx], slots: newSlots };
+                                      onUpdateBusinessHours(newHours);
+                                    }
+                                  }}
+                                  className="bg-transparent text-[10px] font-bold outline-none text-stone-600"
+                                />
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+
+                <div className="space-y-6 pt-12 border-t border-gold/10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="material-symbols-outlined text-gold/70 text-base">block</span>
+                    <h3 className="text-[11px] uppercase tracking-widest text-stone-500 font-black">Bloqueios de Agenda</h3>
+                  </div>
+                  <p className="text-[10px] text-stone-400 font-bold -mt-4 mb-4">Bloqueie horários específicos (férias, feriados, manutenção).</p>
+
+                  <div className="bg-white/80 dark:bg-luxury-medium/40 p-6 rounded-3xl border border-gold/10 space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-[8px] uppercase font-black text-stone-500 mb-1 block">Início</span>
+                        <input type="date" value={newBlockStart} onChange={e => setNewBlockStart(e.target.value)} className="w-full bg-stone-50 p-3 rounded-xl text-xs outline-none border border-gold/5" />
+                      </div>
+                      <div>
+                        <span className="text-[8px] uppercase font-black text-stone-500 mb-1 block">Fim</span>
+                        <input type="date" value={newBlockEnd} onChange={e => setNewBlockEnd(e.target.value)} className="w-full bg-stone-50 p-3 rounded-xl text-xs outline-none border border-gold/5" />
+                      </div>
+                    </div>
+                    <input type="text" placeholder="Motivo (ex: Férias, Manutenção)" value={newBlockReason} onChange={e => setNewBlockReason(e.target.value)} className="w-full bg-stone-50 p-3 rounded-xl text-xs outline-none border border-gold/5" />
+                    <button
+                      onClick={() => {
+                        if (newBlockStart && newBlockEnd) {
+                          onAddBlock({ id: '', startDate: newBlockStart, endDate: newBlockEnd, reason: newBlockReason });
+                          setNewBlockStart(''); setNewBlockEnd(''); setNewBlockReason('');
+                        }
+                      }}
+                      className="w-full py-4 gold-gradient text-white rounded-xl text-[10px] font-black uppercase shadow-lg"
+                    >
+                      Adicionar Bloqueio
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {studio.blocks?.map(block => (
+                      <div key={block.id} className="p-4 bg-white border border-rose-500/10 rounded-2xl flex items-center justify-between shadow-sm">
+                        <div>
+                          <p className="text-xs font-bold text-stone-900">{block.reason || 'Bloqueio sem motivo'}</p>
+                          <p className="text-[9px] text-stone-500 uppercase font-bold">{block.startDate.split('-').reverse().join('/')} até {block.endDate.split('-').reverse().join('/')}</p>
+                        </div>
+                        <button onClick={() => onDeleteBlock(block.id)} className="text-rose-400 hover:text-rose-600"><span className="material-symbols-outlined text-sm">delete</span></button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -506,481 +439,134 @@ const Profile: React.FC<ProfileProps> = ({
             {adminSection === 'clients' && (
               <div className="space-y-6">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-[11px] uppercase tracking-widest text-stone-500 dark:text-stone-200 font-black">Base de Clientes & Histórico</h3>
+                  <h3 className="text-[11px] uppercase tracking-widest text-stone-500 font-black">Base de Clientes</h3>
                   <button onClick={() => onAddClient({ id: Date.now().toString(), name: 'Novo Cliente', whatsapp: '+55', totalSpent: 0, notes: '' } as any)} className="px-6 py-3 gold-gradient text-white text-[9px] font-black uppercase rounded-full shadow-lg">Novo Cliente</button>
                 </div>
-                {clients.map(c => {
-                  const clientApps = allAppointments.filter(app =>
-                    app.clientWhatsapp === c.whatsapp || app.clientName === c.name
-                  );
-                  const clientTotal = clientApps
-                    .filter(app => app.status === 'COMPLETED')
-                    .reduce((sum, app) => sum + parsePrice(app.price), 0);
-
-                  return (
-                    <div key={c.id} className="p-8 bg-white/80 dark:bg-luxury-medium/40 border border-gold/10 rounded-[2.5rem] shadow-sm overflow-hidden relative transition-all hover:border-gold/30">
-                      <div className="absolute top-0 left-0 w-1.5 h-full bg-gold opacity-30"></div>
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-2 border-gold/5 pb-6 mb-6">
-                        <div className="flex items-center gap-5">
-                          <div className="w-16 h-16 rounded-full border-2 border-gold/20 flex items-center justify-center text-gold bg-gold/5 shadow-inner">
-                            <span className="material-symbols-outlined text-3xl font-bold">face_retouching_natural</span>
-                          </div>
-                          <div>
-                            <input className="font-display font-black text-2xl bg-transparent text-stone-900 dark:text-parchment-light outline-none focus:text-gold-dark w-full" value={c.name} onChange={(e) => onUpdateClient({ ...c, name: e.target.value })} placeholder="Nome do Cliente" />
-                            <div className="flex flex-col gap-1 mt-1">
-                              <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-xs text-gold font-bold">smartphone</span>
-                                <input className="text-[10px] uppercase tracking-widest text-stone-600 dark:text-stone-300 font-black bg-transparent outline-none" value={c.whatsapp} onChange={(e) => onUpdateClient({ ...c, whatsapp: e.target.value })} placeholder="WhatsApp" />
-                              </div>
-                              <input className="text-[9px] text-stone-400 bg-transparent outline-none w-full" value={c.notes || ''} onChange={(e) => onUpdateClient({ ...c, notes: e.target.value })} placeholder="Notas sobre o cliente..." />
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right bg-emerald-500/10 px-6 py-4 rounded-2xl border-2 border-emerald-500/20 shadow-sm min-w-[150px]">
-                          <p className="text-[9px] uppercase text-emerald-700 dark:text-emerald-400 font-black tracking-[0.2em] mb-1">Total Consumido</p>
-                          <p className="text-2xl font-display text-emerald-700 dark:text-emerald-400 font-black italic">R$ {clientTotal.toFixed(2)}</p>
+                {clients.map(c => (
+                  <div key={c.id} className="p-6 bg-white/80 dark:bg-luxury-medium/40 border border-gold/10 rounded-[2rem] shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-full border border-gold/20 flex items-center justify-center text-gold bg-gold/5"><span className="material-symbols-outlined">person</span></div>
+                        <div>
+                          <input className="font-display font-black text-lg bg-transparent text-stone-900 dark:text-parchment-light outline-none" value={c.name} onChange={(e) => onUpdateClient({ ...c, name: e.target.value })} />
+                          <input className="text-[10px] text-stone-500 bg-transparent outline-none" value={c.whatsapp} onChange={(e) => onUpdateClient({ ...c, whatsapp: e.target.value })} />
                         </div>
                       </div>
-
-                      <div className="space-y-4">
-                        <h4 className="text-[10px] uppercase text-gold-dark dark:text-gold-light font-black tracking-[0.3em] ml-1 flex items-center gap-2">
-                          <span className="w-2 h-2 rounded-full bg-gold"></span>
-                          Histórico de Visitas
-                        </h4>
-                        <div className="grid grid-cols-1 gap-3 max-h-60 overflow-y-auto pr-2 no-scrollbar">
-                          {clientApps.map((app, idx) => (
-                            <div key={idx} className={`p-4 rounded-2xl border flex items-center justify-between group transition-colors ${app.status === 'COMPLETED' ? 'bg-stone-50 dark:bg-luxury-black/60 border-stone-200 dark:border-stone-800' : 'bg-gold/5 border-gold/20'}`}>
-                              <div>
-                                <p className={`font-display font-black text-base ${app.status === 'COMPLETED' ? 'text-stone-700 dark:text-stone-300' : 'text-stone-900 dark:text-parchment-light'}`}>{app.serviceName}</p>
-                                <p className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black">{app.date} {app.month.substring(0, 3)} • {app.time}</p>
-                              </div>
-                              <span className={`text-[8px] uppercase font-black px-3 py-1 rounded-full ${getStatusStyle(app.status)}`}>{app.status}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="mt-8 pt-6 border-t border-gold/10 flex justify-between items-center">
-                        <button onClick={() => onDeleteClient(c.id)} className="px-6 py-2.5 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 text-[9px] uppercase tracking-widest font-black hover:bg-red-600 hover:text-white transition-all shadow-sm">
-                          Excluir Cliente
-                        </button>
-                      </div>
+                      <button onClick={() => onDeleteClient(c.id)} className="text-red-500/50 hover:text-red-500"><span className="material-symbols-outlined">delete</span></button>
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
-            )}
-
-            {adminSection === 'agenda' && (
-              <ErrorBoundary sectionName="Agenda">
-                <div className="space-y-8">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="material-symbols-outlined text-gold text-lg font-bold">calendar_month</span>
-                    <h3 className="text-[11px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Gerenciamento de Agenda</h3>
-                  </div>
-
-                  {/* Agendamentos */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-6">
-                      <span className="material-symbols-outlined text-gold/70 text-base">list_alt</span>
-                      <h4 className="text-[10px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Agendamentos Realizados</h4>
-                    </div>
-
-                    <div className="space-y-4">
-                      {allAppointments && allAppointments.length > 0 ? (
-                        [...allAppointments].filter(app => app && app.status !== 'CANCELLED').sort((a, b) => {
-                          const dateA = new Date(a.date + 'T12:00:00').getTime();
-                          const dateB = new Date(b.date + 'T12:00:00').getTime();
-                          return dateB - dateA;
-                        }).map((app: Appointment) => (
-                          <div key={app.id} className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-[2rem] border border-gold/10 shadow-sm flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-xl bg-gold/10 flex flex-col items-center justify-center text-gold">
-                                <span className="text-lg font-black leading-none">{String(app.date).includes('-') ? app.date.split('-')[2] : app.date}</span>
-                                <span className="text-[8px] uppercase font-black">{(app.month || 'Mês').substring(0, 3)}</span>
-                              </div>
-                              <div>
-                                <h5 className="font-bold text-stone-900 dark:text-parchment-light">{app.clientName || 'Cliente'}</h5>
-                                <p className="text-[10px] text-stone-500 dark:text-stone-400 uppercase tracking-widest">{app.time || 'Horário'} • {app.serviceName || 'Serviço'}</p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-display font-black text-gold-dark dark:text-gold-light italic">{app.price}</p>
-                              <span className={`text-[8px] uppercase font-black px-2 py-1 rounded-full border ${app.status === 'SCHEDULED' ? 'border-gold/30 text-gold' : 'border-emerald-500/30 text-emerald-500'}`}>
-                                {app.status === 'SCHEDULED' ? 'Pendente' : 'Concluído'}
-                              </span>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div className="p-12 bg-white/50 dark:bg-luxury-black/30 rounded-[2.5rem] border border-gold/10 text-center">
-                          <span className="material-symbols-outlined text-gold/20 text-5xl mb-2">event_busy</span>
-                          <p className="text-stone-500 dark:text-stone-400 italic text-sm">Nenhum agendamento encontrado.</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Bloqueios de Agenda */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-6">
-                      <span className="material-symbols-outlined text-gold/70 text-base">block</span>
-                      <h4 className="text-[10px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Bloqueios de Agenda</h4>
-                    </div>
-
-                    <div className="p-8 bg-white/80 dark:bg-luxury-medium/40 rounded-[2.5rem] border border-gold/10">
-                      <p className="text-sm text-stone-600 dark:text-stone-400 mb-6">
-                        Bloqueie horários específicos (férias, feriados, manutenção).
-                      </p>
-
-                      {/* Formulário para adicionar bloqueio */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div className="space-y-2">
-                          <label className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black ml-1">Início</label>
-                          <input
-                            type="datetime-local"
-                            value={newBlockStart}
-                            onChange={(e) => setNewBlockStart(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-gold/20 bg-white dark:bg-luxury-black/50 outline-none focus:border-gold transition-all text-stone-800 dark:text-stone-200"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black ml-1">Fim</label>
-                          <input
-                            type="datetime-local"
-                            value={newBlockEnd}
-                            onChange={(e) => setNewBlockEnd(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-gold/20 bg-white dark:bg-luxury-black/50 outline-none focus:border-gold transition-all text-stone-800 dark:text-stone-200"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black ml-1">Motivo</label>
-                          <input
-                            type="text"
-                            value={newBlockReason}
-                            onChange={(e) => setNewBlockReason(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-gold/20 bg-white dark:bg-luxury-black/50 outline-none focus:border-gold transition-all text-stone-800 dark:text-stone-200"
-                            placeholder="Ex: Férias, Feriado..."
-                          />
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={() => {
-                          if (newBlockStart && newBlockEnd && newBlockReason) {
-                            onAddBlock({
-                              id: Date.now().toString(),
-                              startDate: newBlockStart,
-                              endDate: newBlockEnd,
-                              reason: newBlockReason
-                            });
-                            setNewBlockStart('');
-                            setNewBlockEnd('');
-                            setNewBlockReason('');
-                          } else {
-                            alert('Preencha todos os campos do bloqueio.');
-                          }
-                        }}
-                        className="px-6 py-3 gold-gradient text-white rounded-xl text-[10px] uppercase font-black tracking-widest shadow-lg hover:shadow-gold/40 transition-all transform active:scale-95 flex items-center gap-2"
-                      >
-                        <span className="material-symbols-outlined text-sm">add</span>
-                        Adicionar Bloqueio
-                      </button>
-
-                      {/* Lista de bloqueios */}
-                      <div className="mt-8 space-y-4">
-                        {studio?.blocks && studio.blocks.length > 0 ? (
-                          (studio.blocks || []).map((block: any) => (
-                            <div key={block.id || Math.random()} className="flex items-center justify-between p-4 bg-white/50 dark:bg-luxury-black/30 rounded-xl border border-gold/10 hover:border-gold/30 transition-colors">
-                              <div>
-                                <p className="font-bold text-sm text-stone-900 dark:text-parchment-light">{block.reason || 'S/ Motivo'}</p>
-                                <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-                                  {(block.startDate && block.endDate) ? (
-                                    `${new Date(block.startDate).toLocaleString('pt-BR')} → ${new Date(block.endDate).toLocaleString('pt-BR')}`
-                                  ) : 'Período inválido'}
-                                </p>
-                              </div>
-                              <button
-                                onClick={() => onDeleteBlock(block.id)}
-                                className="text-red-500 hover:text-red-700 transition-colors p-2"
-                              >
-                                <span className="material-symbols-outlined">delete</span>
-                              </button>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="py-12 text-center">
-                            <span className="material-symbols-outlined text-gold/20 text-5xl mb-2">event_busy</span>
-                            <p className="text-stone-500 dark:text-stone-400 italic text-sm">Nenhum bloqueio configurado.</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Horários de Funcionamento */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-6">
-                      <span className="material-symbols-outlined text-gold/70 text-base">schedule</span>
-                      <h4 className="text-[10px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Horários de Funcionamento</h4>
-                    </div>
-
-                    <div className="p-8 bg-white/80 dark:bg-luxury-medium/40 rounded-[2.5rem] border border-gold/10">
-                      <p className="text-sm text-stone-600 dark:text-stone-400 mb-6">
-                        Configure os horários de funcionamento do estabelecimento.
-                      </p>
-
-                      {studio?.businessHours && studio.businessHours.length > 0 ? (
-                        <div className="space-y-4">
-                          {(studio.businessHours || []).map((hours: any, index: number) => (
-                            <div key={index} className="p-4 bg-white/50 dark:bg-luxury-black/30 rounded-xl border border-gold/10">
-                              <div className="flex items-center justify-between">
-                                <span className="font-bold text-sm">{hours.day || 'Dia'}</span>
-                                {hours.closed ? (
-                                  <span className="text-xs text-red-500 uppercase font-black">Fechado</span>
-                                ) : (
-                                  <span className="text-xs text-gold uppercase font-black">{hours.start || '09:00'} - {hours.end || '18:00'}</span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="py-12 text-center">
-                          <span className="material-symbols-outlined text-gold/20 text-5xl mb-2">schedule</span>
-                          <p className="text-stone-500 dark:text-stone-400 italic text-sm">Configuração de horários ainda não definida.</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </ErrorBoundary>
             )}
 
             {adminSection === 'settings' && (
               <div className="space-y-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <span className="material-symbols-outlined text-gold text-lg font-bold">storefront</span>
-                  <h3 className="text-[11px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Configurações do Estúdio</h3>
+                  <span className="material-symbols-outlined text-gold">storefront</span>
+                  <h3 className="text-[11px] uppercase tracking-widest font-black text-stone-600">Configurações do Estúdio</h3>
                 </div>
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10 shadow-sm relative group focus-within:border-gold transition-colors">
-                    <span className="text-[9px] uppercase tracking-widest text-gold-dark dark:text-gold-light font-black mb-2 block">Nome do Estúdio</span>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-0 top-1/2 -translate-y-1/2 text-gold/60">store</span>
-                      <input
-                        type="text"
-                        value={studio.name}
-                        onChange={(e) => setStudio({ ...studio, name: e.target.value })}
-                        className="w-full bg-transparent pl-8 py-2 font-display text-lg font-bold text-stone-900 dark:text-parchment-light outline-none"
-                        placeholder="Nome do Estúdio"
-                      />
-                    </div>
+                  <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10">
+                    <span className="text-[9px] uppercase tracking-widest text-gold-dark font-black mb-2 block">Nome do Estúdio</span>
+                    <input type="text" value={studio.name} onChange={(e) => setStudio({ ...studio, name: e.target.value })} className="w-full bg-transparent font-display text-lg font-bold text-stone-900 dark:text-parchment-light outline-none" />
                   </div>
-
-                  <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10 shadow-sm relative group focus-within:border-gold transition-colors">
-                    <span className="text-[9px] uppercase tracking-widest text-gold-dark dark:text-gold-light font-black mb-2 block">Nome do Proprietário</span>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-0 top-1/2 -translate-y-1/2 text-gold/60">person_celebrate</span>
-                      <input
-                        type="text"
-                        value={studio.ownerName || ''}
-                        onChange={(e) => setStudio({ ...studio, ownerName: e.target.value })}
-                        className="w-full bg-transparent pl-8 py-2 font-display text-lg font-bold text-stone-900 dark:text-parchment-light outline-none"
-                        placeholder="Seu Nome"
-                      />
-                    </div>
+                  <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10">
+                    <span className="text-[9px] uppercase tracking-widest text-gold-dark font-black mb-2 block">Proprietário</span>
+                    <input type="text" value={studio.ownerName || ''} onChange={(e) => setStudio({ ...studio, ownerName: e.target.value })} className="w-full bg-transparent font-display text-lg font-bold text-stone-900 dark:text-parchment-light outline-none" />
                   </div>
-
-                  <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10 shadow-sm relative group focus-within:border-gold transition-colors">
-                    <span className="text-[9px] uppercase tracking-widest text-gold-dark dark:text-gold-light font-black mb-2 block">WhatsApp Oficial</span>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-0 top-1/2 -translate-y-1/2 text-gold/60">chat</span>
-                      <input
-                        type="text"
-                        value={studio.whatsapp}
-                        onChange={(e) => setStudio({ ...studio, whatsapp: e.target.value })}
-                        className="w-full bg-transparent pl-8 py-2 font-bold text-stone-900 dark:text-parchment-light outline-none"
-                        placeholder="+55 (00) 00000-0000"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10 shadow-sm relative group focus-within:border-gold transition-colors">
-                    <span className="text-[9px] uppercase tracking-widest text-gold-dark dark:text-gold-light font-black mb-2 block">E-mail de Contato</span>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-0 top-1/2 -translate-y-1/2 text-gold/60">mail</span>
-                      <input
-                        type="email"
-                        value={studio.email}
-                        onChange={(e) => setStudio({ ...studio, email: e.target.value })}
-                        className="w-full bg-transparent pl-8 py-2 font-bold text-stone-900 dark:text-parchment-light outline-none"
-                        placeholder="contato@exemplo.com"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10 shadow-sm relative group focus-within:border-gold transition-colors md:col-span-2">
-                    <span className="text-[9px] uppercase tracking-widest text-gold-dark dark:text-gold-light font-black mb-2 block">Endereço Completo</span>
-                    <div className="relative">
-                      <span className="material-symbols-outlined absolute left-0 top-1/2 -translate-y-1/2 text-gold/60">location_on</span>
-                      <input
-                        type="text"
-                        value={studio.address}
-                        onChange={(e) => setStudio({ ...studio, address: e.target.value })}
-                        className="w-full bg-transparent pl-8 py-2 font-bold text-stone-900 dark:text-parchment-light outline-none"
-                        placeholder="Rua Exemplo, 123 - Cidade/UF"
-                      />
-                    </div>
-                  </div>
-
-                  {/* História do Estabelecimento */}
-                  <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10 shadow-sm md:col-span-2">
-                    <span className="text-[9px] uppercase tracking-widest text-gold-dark dark:text-gold-light font-black mb-2 block">Nossa História</span>
-                    <textarea
-                      value={studio.history || ''}
-                      onChange={(e) => setStudio({ ...studio, history: e.target.value })}
-                      className="w-full bg-transparent py-2 font-bold text-stone-900 dark:text-parchment-light outline-none resize-none"
-                      placeholder="Conte a história do seu estabelecimento..."
-                      rows={4}
-                    />
-                  </div>
-
-                  {/* Missão */}
-                  <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10 shadow-sm md:col-span-2">
-                    <span className="text-[9px] uppercase tracking-widest text-gold-dark dark:text-gold-light font-black mb-2 block">Nossa Missão</span>
-                    <textarea
-                      value={studio.mission || ''}
-                      onChange={(e) => setStudio({ ...studio, mission: e.target.value })}
-                      className="w-full bg-transparent py-2 font-bold text-stone-900 dark:text-parchment-light outline-none resize-none"
-                      placeholder="Qual a missão do seu estabelecimento?"
-                      rows={3}
-                    />
+                  <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10 md:col-span-2">
+                    <span className="text-[9px] uppercase tracking-widest text-gold-dark font-black mb-2 block">Endereço</span>
+                    <input type="text" value={studio.address} onChange={(e) => setStudio({ ...studio, address: e.target.value })} className="w-full bg-transparent font-bold text-stone-900 dark:text-parchment-light outline-none" />
                   </div>
                 </div>
 
                 <div className="flex justify-end pt-4">
-                  <button
-                    onClick={() => onUpdateProfile && onUpdateProfile(studio)}
-                    className="px-8 py-4 gold-gradient text-white rounded-2xl text-[10px] uppercase font-black tracking-widest shadow-lg hover:shadow-gold/40 transition-all transform active:scale-95 flex items-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-sm">save</span>
-                    Salvar Alterações
-                  </button>
+                  <button onClick={() => onUpdateProfile && onUpdateProfile(studio)} className="px-8 py-4 gold-gradient text-white rounded-2xl text-[10px] uppercase font-black shadow-lg">Salvar Perfil</button>
                 </div>
 
-                {/* Password Change Section */}
-                <div className="mt-8 pt-8 border-t border-gold/10">
-                  <div className="flex items-center gap-2 mb-6">
-                    <span className="material-symbols-outlined text-gold text-lg font-bold">lock_reset</span>
-                    <h3 className="text-[11px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Segurança do Acesso</h3>
+                <div className="mt-8 pt-8 border-t border-gold/10 space-y-6">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-gold">lock_reset</span>
+                    <h3 className="text-[11px] uppercase tracking-widest font-black text-stone-600">Segurança</h3>
                   </div>
+                  <div className="p-8 bg-white/80 dark:bg-luxury-medium/40 border border-gold/10 rounded-[2.5rem] grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <input type="password" value={currentPassInput} onChange={(e) => setCurrentPassInput(e.target.value)} placeholder="Senha Atual" className="bg-transparent border-b border-gold/20 p-2 outline-none" />
+                    <input type="password" value={newPassInput} onChange={(e) => setNewPassInput(e.target.value)} placeholder="Nova Senha" className="bg-transparent border-b border-gold/20 p-2 outline-none" />
+                    <button onClick={handleChangePassword} className="bg-luxury-black text-gold rounded-xl text-[10px] uppercase font-black h-12">Alterar Senha</button>
+                  </div>
+                  {passwordMsg && <p className="text-[10px] text-center font-bold text-emerald-500">{passwordMsg}</p>}
+                </div>
 
-                  <div className="p-8 bg-white/80 dark:bg-luxury-medium/40 rounded-[2.5rem] border border-gold/10 shadow-sm">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black ml-1">Senha Atual</label>
-                        <input
-                          type="password"
-                          value={currentPassInput}
-                          onChange={(e) => setCurrentPassInput(e.target.value)}
-                          className="w-full bg-white dark:bg-luxury-black/50 border border-gold/20 rounded-xl px-4 py-3 outline-none focus:border-gold transition-all text-stone-800 dark:text-stone-200"
-                          placeholder="••••••"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black ml-1">Nova Senha</label>
-                        <input
-                          type="password"
-                          value={newPassInput}
-                          onChange={(e) => setNewPassInput(e.target.value)}
-                          className="w-full bg-white dark:bg-luxury-black/50 border border-gold/20 rounded-xl px-4 py-3 outline-none focus:border-gold transition-all text-stone-800 dark:text-stone-200"
-                          placeholder="••••••"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[9px] uppercase tracking-widest text-stone-500 dark:text-stone-400 font-black ml-1">Confirmar Nova Senha</label>
-                        <input
-                          type="password"
-                          value={confirmPassInput}
-                          onChange={(e) => setConfirmPassInput(e.target.value)}
-                          className="w-full bg-white dark:bg-luxury-black/50 border border-gold/20 rounded-xl px-4 py-3 outline-none focus:border-gold transition-all text-stone-800 dark:text-stone-200"
-                          placeholder="••••••"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between mt-6">
-                      <span className={`text-[10px] font-bold ${passwordMsg.includes('sucesso') ? 'text-emerald-500' : 'text-red-500'}`}>{passwordMsg}</span>
-                      <button
-                        onClick={handleChangePassword}
-                        className="px-8 py-3 bg-luxury-black text-gold dark:bg-white dark:text-luxury-black rounded-xl text-[10px] uppercase font-black tracking-widest hover:opacity-90 transition-opacity"
-                      >
-                        Alterar Senha
-                      </button>
-                    </div>
+                {/* Zona de Perigo / Entrega */}
+                <div className="pt-10 border-t border-rose-500/10 space-y-6">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-rose-500 font-bold">warning</span>
+                    <h3 className="text-[11px] uppercase tracking-widest text-stone-500 font-black">Entrega ao Usuário Final</h3>
+                  </div>
+                  <div className="p-8 bg-rose-500/5 border border-rose-500/20 rounded-[2.5rem]">
+                    <p className="text-xs text-rose-800 mb-6 font-bold">Atenção: Isso removerá todos os dados de testes (clientes e agendamentos).</p>
+                    <button onClick={onClearSystem} className="w-full py-4 bg-rose-500 text-white text-[10px] font-black uppercase rounded-2xl shadow-lg hover:bg-rose-600 transition-colors">Limpar Sistema para Entrega Real</button>
                   </div>
                 </div>
               </div>
             )}
 
-            <button onClick={handleLogoutAdmin} className="w-full py-5 border border-red-500/30 text-red-600 dark:text-red-400 rounded-2xl text-[10px] uppercase tracking-[0.3em] font-black hover:bg-red-500/10 transition-all mt-12 shadow-lg backdrop-blur-sm">Sair do Painel Admin</button>
+            <button onClick={handleLogoutAdmin} className="w-full py-5 border border-red-500/30 text-red-600 rounded-2xl text-[10px] uppercase tracking-[0.3em] font-black hover:bg-red-500/10 transition-all mt-12 shadow-lg backdrop-blur-sm">Sair do Painel Admin</button>
           </div>
         )}
 
+        {/* User Sections */}
         {activeTab === 'profile' && !isAdmin && (
           <div className="space-y-6">
-            <div className="flex items-center gap-2 mb-4"><span className="material-symbols-outlined text-gold text-lg font-bold">manage_accounts</span><h3 className="text-[10px] uppercase tracking-widest font-black text-stone-600 dark:text-stone-300">Informações Pessoais</h3></div>
-            {[
-              { id: 'name', label: 'Nome Completo', value: client.name },
-              { id: 'whatsapp', label: 'WhatsApp', value: client.whatsapp },
-              { id: 'email', label: 'E-mail', value: client.email },
-            ].map(field => (
-              <div key={field.id} className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10 shadow-sm">
-                <span className="text-[9px] uppercase tracking-widest text-gold-dark dark:text-gold-light font-black">{field.label}</span>
-                <p className="text-stone-900 dark:text-parchment-light font-bold text-base mt-1">{field.value}</p>
-              </div>
-            ))}
+            <h3 className="text-[10px] uppercase font-black text-stone-600 mb-4">Informações Pessoais</h3>
+            <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10">
+              <span className="text-[9px] uppercase text-gold-dark font-black">Nome Completo</span>
+              <p className="text-stone-900 dark:text-parchment-light font-bold text-base mt-1">{client.name}</p>
+            </div>
+            <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10">
+              <span className="text-[9px] uppercase text-gold-dark font-black">WhatsApp</span>
+              <p className="text-stone-900 dark:text-parchment-light font-bold text-base mt-1">{client.whatsapp}</p>
+            </div>
           </div>
         )}
 
         {activeTab === 'history' && !isAdmin && (
           <div className="space-y-10">
             {client.appointments?.length ? client.appointments.map(app => (
-              <div key={app.id} className="bg-white/80 dark:bg-luxury-medium/40 rounded-[2.5rem] border border-gold/10 p-8 shadow-md transition-all hover:border-gold/30">
-                <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
+              <div key={app.id} className="bg-white/80 dark:bg-luxury-medium/40 rounded-[2.5rem] border border-gold/10 p-8 shadow-md">
+                <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-5">
-                    <div className="w-16 h-16 rounded-2xl bg-gold text-white flex flex-col items-center justify-center shadow-lg"><span className="text-xl font-black leading-none">{String(app.date).includes('-') ? app.date.split('-')[2] : app.date}</span><span className="text-[8px] uppercase font-black mt-1">{app.month.substring(0, 3)}</span></div>
+                    <div className="w-16 h-16 rounded-2xl bg-gold text-white flex flex-col items-center justify-center font-black">
+                      <span>{app.date.split('-')[2]}</span>
+                      <span className="text-[8px] uppercase">{app.month.substring(0, 3)}</span>
+                    </div>
                     <div>
                       <h4 className="font-display text-2xl text-stone-900 dark:text-parchment-light font-black">{app.serviceName}</h4>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className={`text-[8px] uppercase font-black border-2 rounded-full px-3 py-1 inline-block ${getStatusStyle(app.status)}`}>{app.status}</span>
-                        <span className="text-[8px] uppercase font-black text-stone-500 dark:text-stone-400 tracking-widest ml-2">{app.date.split('-')[0]} • {app.time}</span>
-                      </div>
+                      <span className={`text-[8px] uppercase font-black border-2 rounded-full px-3 py-1 ${getStatusStyle(app.status)}`}>{app.status}</span>
                     </div>
                   </div>
-                  <span className="text-lg font-display text-gold-dark dark:text-gold-light font-black italic">{app.price}</span>
+                  <span className="text-lg font-display text-gold-dark font-black italic">{app.price}</span>
                 </div>
-
                 {app.status === 'SCHEDULED' && (
                   <div className="flex gap-4 border-t border-gold/10 pt-6">
-                    <button onClick={() => onRescheduleAppointment(app.id)} className="flex-1 py-4 rounded-2xl bg-gold/10 border border-gold/20 text-gold-dark dark:text-gold-light text-[10px] font-black uppercase tracking-widest hover:bg-gold/20 transition-all">Reagendar</button>
-                    <button onClick={() => onCancelAppointment(app.id)} className="flex-1 py-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-[10px] font-black uppercase tracking-widest hover:bg-rose-500/20 transition-all">Cancelar</button>
+                    <button onClick={() => onRescheduleAppointment(app.id)} className="flex-1 py-4 rounded-2xl bg-gold/10 border border-gold/20 text-gold-dark text-[10px] font-black uppercase tracking-widest">Reagendar</button>
+                    <button onClick={() => onCancelAppointment(app.id)} className="flex-1 py-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-600 text-[10px] font-black uppercase tracking-widest">Cancelar</button>
                   </div>
                 )}
               </div>
-            )) : (
-              <div className="py-24 text-center">
-                <span className="material-symbols-outlined text-gold/20 text-7xl mb-4">event_busy</span>
-                <p className="text-stone-500 dark:text-stone-400 italic font-medium">Nenhum agendamento encontrado.</p>
-              </div>
-            )}
+            )) : <div className="py-24 text-center text-stone-400 italic">Nenhum agendamento encontrado.</div>}
           </div>
         )}
       </div>
 
-      {!isAdmin && <div className="mt-20 mb-8 flex flex-col items-center opacity-40 hover:opacity-100 transition-all"><button onClick={() => onNavigate(Page.ADMIN_LOGIN)} className="flex flex-col items-center gap-3 group"><span className="material-symbols-outlined text-2xl text-gold/60 group-hover:text-gold transition-colors font-bold">lock</span><span className="text-[7px] uppercase tracking-[0.5em] text-stone-500 dark:text-stone-400 font-black">Portal Administrativo {currentYear}</span></button></div>}
+      {!isAdmin && (
+        <div className="mt-20 mb-8 flex flex-col items-center opacity-40 hover:opacity-100 transition-all">
+          <button onClick={() => onNavigate(Page.ADMIN_LOGIN)} className="flex flex-col items-center gap-3">
+            <span className="material-symbols-outlined text-2xl text-gold/60">lock</span>
+            <span className="text-[7px] uppercase tracking-[0.5em] text-stone-500 font-black">Portal Administrativo {currentYear}</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

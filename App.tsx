@@ -38,17 +38,33 @@ const App: React.FC = () => {
     blocks: []
   });
   // Date Logic
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonthIndex = today.getMonth(); // 0-11
-  const currentDay = today.getDate();
-
   const monthNames = [
     "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
     "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
   ];
 
+  const [viewDate, setViewDate] = useState(new Date());
+
+  const currentYear = viewDate.getFullYear();
+  const currentMonthIndex = viewDate.getMonth();
   const currentMonthName = monthNames[currentMonthIndex];
+  const currentDay = new Date().getDate();
+
+  const handlePrevMonth = () => {
+    setViewDate(prev => {
+      const d = new Date(prev);
+      d.setMonth(d.getMonth() - 1);
+      return d;
+    });
+  };
+
+  const handleNextMonth = () => {
+    setViewDate(prev => {
+      const d = new Date(prev);
+      d.setMonth(d.getMonth() + 1);
+      return d;
+    });
+  };
 
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>(() => {
@@ -189,7 +205,11 @@ const App: React.FC = () => {
     const daysInMonth = new Date(currentYear, currentMonthIndex + 1, 0).getDate();
     const days: number[] = [];
 
-    for (let d = currentDay; d <= daysInMonth; d++) {
+    const now = new Date();
+    const isCurrentMonth = currentYear === now.getFullYear() && currentMonthIndex === now.getMonth();
+    const startDay = isCurrentMonth ? now.getDate() : 1;
+
+    for (let d = startDay; d <= daysInMonth; d++) {
       const date = new Date(currentYear, currentMonthIndex, d);
       const weekDay = date.getDay();
       const dateStr = date.toISOString().split('T')[0];
@@ -207,7 +227,7 @@ const App: React.FC = () => {
       days.push(d);
     }
     setAvailableDays(days);
-  }, [currentDay, currentMonthIndex, currentYear, studio.businessHours, studio.blocks]);
+  }, [currentMonthIndex, currentYear, studio.businessHours, studio.blocks]);
 
 
   const [client, setClient] = useState<User>({
@@ -337,6 +357,23 @@ const App: React.FC = () => {
         is_open: h.isOpen,
         slots: h.slots
       });
+    }
+  };
+
+  const handleClearSystem = async () => {
+    if (confirm("⚠️ ATENÇÃO: Isso excluirá TODOS os agendamentos e clientes. Esta ação não pode ser desfeita. Deseja continuar?")) {
+      try {
+        const { error: appError } = await supabase.from('appointments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+        const { error: clientError } = await supabase.from('clients').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+        if (appError || clientError) throw new Error("Erro ao limpar banco de dados");
+
+        setAllAppointments([]);
+        setClients([]);
+        alert("Sistema limpo com sucesso! Pronto para uso real.");
+      } catch (e: any) {
+        alert("Erro ao limpar sistema: " + e.message);
+      }
     }
   };
 
@@ -579,7 +616,7 @@ const App: React.FC = () => {
             studio={studio}
             services={services}
             onConfirm={() => setCurrentPage(Page.CONFIRMATION)}
-            selectedService={selectedService}
+            selectedService={services.find(s => s.id === (selectedServiceId || services[0]?.id)) || null}
             selectedDate={parseInt(selectedDate.split('-')[2])}
             setSelectedDate={(day) => {
               const newDate = new Date(currentYear, currentMonthIndex, day);
@@ -592,6 +629,8 @@ const App: React.FC = () => {
             currentMonthName={currentMonthName}
             currentYear={currentYear}
             currentMonthIndex={currentMonthIndex}
+            onPrevMonth={handlePrevMonth}
+            onNextMonth={handleNextMonth}
           />
         );
       case Page.PROFILE:
@@ -628,6 +667,7 @@ const App: React.FC = () => {
             adminPassword={adminPassword}
             setAdminPassword={setAdminPassword}
             onUpdateProfile={handleUpdateProfile}
+            onClearSystem={handleClearSystem}
           />
         );
       case Page.ADMIN_LOGIN:
@@ -648,7 +688,7 @@ const App: React.FC = () => {
             client={client}
             setClient={setClient}
             studioWhatsapp={studio.whatsapp}
-            selectedService={selectedService}
+            selectedService={services.find(s => s.id === (selectedServiceId || services[0]?.id)) || null}
             selectedDate={selectedDate}
             selectedTime={selectedTime}
             onConfirmBooking={handleAddAppointment}
