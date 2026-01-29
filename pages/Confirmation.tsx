@@ -10,7 +10,7 @@ interface ConfirmationProps {
   selectedDate: string; // ISO string YYYY-MM-DD
   selectedTime: string;
   onConfirmBooking: (appointment: Appointment) => void;
-  checkAvailability: (date: number, time: string, serviceId: string) => boolean;
+  checkAvailability: (date: string, time: string, serviceId: string) => boolean;
   onFinish: () => void;
   currentMonthName: string;
   currentYear: number;

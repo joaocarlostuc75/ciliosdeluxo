@@ -140,7 +140,7 @@ const App: React.FC = () => {
             month: monthName.charAt(0).toUpperCase() + monthName.slice(1), // Capitalize
             time: a.time,
             status: a.status as any,
-            price: 'R$ 0,00' // Column service_price doesn't exist in DB
+            price: typeof a.service_price === 'number' ? `R$ ${a.service_price.toFixed(2).replace('.', ',')}` : 'R$ 130,00'
           };
         }));
       }
@@ -441,14 +441,18 @@ const App: React.FC = () => {
       }
     }
 
-    console.log('Saving appointment with date:', finalDate);
+    // Convert price to numeric
+    const numericPrice = parseFloat(app.price.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+
+    console.log('Saving appointment with date:', finalDate, 'and price:', numericPrice);
 
     // Save to Supabase
     const { data, error } = await supabase.from('appointments').insert({
-      service_id: app.serviceId,
+      service_id: app.serviceId !== 'unknown' ? app.serviceId : null,
       service_name: app.serviceName,
       client_name: app.clientName,
       client_whatsapp: app.clientWhatsapp,
+      service_price: numericPrice,
       date: finalDate,
       time: app.time,
       status: app.status
@@ -648,11 +652,7 @@ const App: React.FC = () => {
             selectedDate={selectedDate}
             selectedTime={selectedTime}
             onConfirmBooking={handleAddAppointment}
-            checkAvailability={(d, t, s) => {
-              // d is coming as number from Confirmation? No, Confirmation expects selectedDate: string.
-              // Let's check Confirmation.tsx props again.
-              return checkAvailability(selectedDate, t, s, reschedulingId);
-            }}
+            checkAvailability={(d, t, s) => checkAvailability(d, t, s, reschedulingId)}
             onFinish={() => setCurrentPage(Page.HOME)}
             currentMonthName={currentMonthName}
             currentYear={currentYear}
