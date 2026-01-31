@@ -1,0 +1,4 @@
+/* Base styles provided by tailwind in index.html */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

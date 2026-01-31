@@ -11,15 +11,11 @@ interface HomeProps {
 const Home: React.FC<HomeProps> = ({ services, onSelectService, studioName }) => {
   return (
     <div className="pb-32 md:pb-24 pt-16 md:pt-24 px-6 lg:px-12 animate-in fade-in duration-1000">
-      <div className="max-w-4xl mb-24 md:mb-32">
-        <h2 className="font-display fluid-text-4xl md:text-7xl font-medium text-stone-900 dark:text-parchment-light leading-[1.1] mb-8">
-          A arte de realçar o <br />
-          <span className="gold-gradient-text italic font-medium">seu olhar único.</span>
+      <div className="max-w-4xl mb-12 flex flex-col items-center mx-auto text-center">
+        <h2 className="font-display fluid-text-4xl md:text-6xl font-medium text-stone-900 dark:text-parchment-light leading-[1.1] mb-2">
+          {studioName}
         </h2>
-        <div className="w-24 h-[1px] bg-gold mb-10"></div>
-        <p className="text-stone-600 dark:text-stone-300 text-lg md:text-xl font-sans max-w-2xl leading-relaxed font-light">
-          No {studioName}, não aplicamos apenas extensões; desenhamos uma moldura que celebra sua essência e sofisticação.
-        </p>
+        <div className="w-16 h-[2px] bg-gold/50 my-6 rounded-full"></div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
@@ -61,24 +57,6 @@ const Home: React.FC<HomeProps> = ({ services, onSelectService, studioName }) =>
         ))}
       </div>
 
-      <section className="mt-40 md:mt-64 border-t border-gold/10 pt-24 pb-12">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-12">
-          <div className="text-center md:text-left">
-            <h4 className="font-display text-3xl md:text-5xl text-gold-dark dark:text-gold italic mb-4">Sinta a Diferença</h4>
-            <p className="text-stone-500 dark:text-stone-400 text-sm md:text-base uppercase tracking-[0.3em] font-semibold">O padrão ouro em estética ocular</p>
-          </div>
-          <div className="flex gap-16">
-            <div className="text-center">
-              <span className="font-display text-5xl text-gold block mb-2">10k+</span>
-              <span className="text-[10px] uppercase tracking-widest text-stone-400 dark:text-stone-500 font-bold">Olhares Transformados</span>
-            </div>
-            <div className="text-center">
-              <span className="font-display text-5xl text-gold block mb-2">100%</span>
-              <span className="text-[10px] uppercase tracking-widest text-stone-400 dark:text-stone-500 font-bold">Satisfação Premium</span>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 };

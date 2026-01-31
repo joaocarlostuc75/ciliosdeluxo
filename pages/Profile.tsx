@@ -1,5 +1,5 @@
-
 import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 import { User, Appointment, Page, Service, Client, BusinessHours, AgendaBlock } from '../types';
 
 interface ProfileProps {
@@ -97,10 +97,11 @@ const Profile: React.FC<ProfileProps> = ({
     return { totalRevenue, pendingRevenue, ticketMedio, popularServices };
   }, [allAppointments, services]);
 
-  const handleLogoutAdmin = () => {
-    setIsAdmin(false);
-    localStorage.removeItem('isAdmin');
-    onNavigate(Page.HOME);
+  const handleLogoutAdmin = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (!error) {
+      onNavigate(Page.HOME);
+    }
   };
 
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -139,12 +140,15 @@ const Profile: React.FC<ProfileProps> = ({
     }
   };
 
-  const handleChangePassword = () => {
-    if (currentPassInput !== adminPassword) { setPasswordMsg('A senha atual está incorreta.'); return; }
+  const handleChangePassword = async () => {
     if (newPassInput.length < 6) { setPasswordMsg('A nova senha deve ter pelo menos 6 caracteres.'); return; }
     if (newPassInput !== confirmPassInput) { setPasswordMsg('A nova senha e a confirmação não coincidem.'); return; }
-    if (setAdminPassword) {
-      setAdminPassword(newPassInput);
+
+    const { error } = await supabase.auth.updateUser({ password: newPassInput });
+
+    if (error) {
+      setPasswordMsg(`Erro: ${error.message}`);
+    } else {
       setPasswordMsg('Senha alterada com sucesso!');
       setCurrentPassInput(''); setNewPassInput(''); setConfirmPassInput('');
     }
@@ -502,7 +506,7 @@ const Profile: React.FC<ProfileProps> = ({
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10">
-                    <span className="text-[9px] uppercase tracking-widest text-gold-dark font-black mb-2 block">Nome do Estúdio</span>
+                    <span className="text-[9px] uppercase tracking-widest text-gold-dark font-black mb-2 block">Estabelecimento</span>
                     <input type="text" value={studio.name} onChange={(e) => setStudio({ ...studio, name: e.target.value })} className="w-full bg-transparent font-display text-lg font-bold text-stone-900 dark:text-parchment-light outline-none" />
                   </div>
                   <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10">
@@ -517,10 +521,30 @@ const Profile: React.FC<ProfileProps> = ({
                     <span className="text-[9px] uppercase tracking-widest text-gold-dark font-black mb-2 block">Endereço</span>
                     <input type="text" value={studio.address} onChange={(e) => setStudio({ ...studio, address: e.target.value })} className="w-full bg-transparent font-bold text-stone-900 dark:text-parchment-light outline-none" />
                   </div>
+                  <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10 md:col-span-2">
+                    <span className="text-[9px] uppercase tracking-widest text-gold-dark font-black mb-2 block">Nossa Jornada</span>
+                    <textarea rows={4} value={studio.history || ''} onChange={(e) => setStudio({ ...studio, history: e.target.value })} className="w-full bg-transparent font-sans text-sm text-stone-600 dark:text-stone-300 outline-none resize-none" placeholder="Conte a história do seu estúdio..." />
+                  </div>
+                  <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 rounded-3xl border border-gold/10 md:col-span-2">
+                    <span className="text-[9px] uppercase tracking-widest text-gold-dark font-black mb-2 block">O que nos move</span>
+                    <textarea rows={2} value={studio.mission || ''} onChange={(e) => setStudio({ ...studio, mission: e.target.value })} className="w-full bg-transparent font-display text-lg italic text-gold-dark outline-none resize-none" placeholder="Sua missão ou frase de impacto..." />
+                  </div>
                 </div>
 
                 <div className="flex justify-end pt-4">
                   <button onClick={() => onUpdateProfile && onUpdateProfile(studio)} className="px-8 py-4 gold-gradient text-white rounded-2xl text-[10px] uppercase font-black shadow-lg">Salvar Perfil</button>
+                </div>
+
+                <div className="mt-8 pt-8 border-t border-gold/10 space-y-6">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-gold">badge</span>
+                    <h3 className="text-[11px] uppercase tracking-widest font-black text-stone-600">Administradores</h3>
+                  </div>
+                  <div className="p-6 bg-white/80 dark:bg-luxury-medium/40 border border-gold/10 rounded-[2.5rem]">
+                    <p className="text-xs text-stone-500 mb-4">Gerencie quem tem acesso ao painel deste estúdio.</p>
+                    {/* Placeholder for future listing implementation */}
+                    <button onClick={() => alert('Funcionalidade de convite em breve!')} className="w-full py-3 border border-dashed border-gold/30 text-gold-dark rounded-xl text-[9px] uppercase font-black hover:bg-gold/5">+ Adicionar Administrador</button>
+                  </div>
                 </div>
 
                 <div className="mt-8 pt-8 border-t border-gold/10 space-y-6">
@@ -589,10 +613,10 @@ const Profile: React.FC<ProfileProps> = ({
 
       {!isAdmin && (
         <div className="mt-20 mb-8 flex flex-col items-center opacity-40 hover:opacity-100 transition-all">
-          <button onClick={() => onNavigate(Page.ADMIN_LOGIN)} className="flex flex-col items-center gap-3">
+          <a href="/admin" className="flex flex-col items-center gap-3">
             <span className="material-symbols-outlined text-2xl text-gold/60">lock</span>
             <span className="text-[7px] uppercase tracking-[0.5em] text-stone-500 font-black">Portal Administrativo {currentYear}</span>
-          </button>
+          </a>
         </div>
       )}
     </div>

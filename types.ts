@@ -66,6 +66,7 @@ export interface AgendaBlock {
 }
 
 export interface User {
+  id: string;
   name: string;
   ownerName?: string;
   whatsapp: string;

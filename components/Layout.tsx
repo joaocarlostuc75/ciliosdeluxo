@@ -17,7 +17,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate, studi
 
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-700 ${darkMode ? 'dark' : ''} bg-gradient-to-b from-parchment-light to-[#F5E6D3] dark:from-luxury-black dark:to-luxury-dark relative overflow-x-hidden`}>
-      
+
       {/* Global Texture Overlay */}
       <div className="fixed inset-0 pointer-events-none ornament-bg opacity-30 dark:opacity-[0.03] z-0 mix-blend-multiply dark:mix-blend-normal"></div>
 
@@ -27,14 +27,14 @@ const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate, studi
           <div className="flex items-center gap-3 cursor-pointer group" onClick={() => onNavigate(Page.HOME)}>
             <div className="w-9 h-9 rounded-full border border-gold/50 flex items-center justify-center transition-all group-hover:bg-gold group-hover:text-white overflow-hidden shadow-sm flex-shrink-0">
               {studio.image ? (
-                <img src={studio.image} alt="Logo" className="w-full h-full object-cover" />
+                <img src={studio.image} alt={studio.name} className="w-full h-full object-cover" />
               ) : (
                 <span className="material-symbols-outlined text-gold group-hover:text-white transition-colors text-lg">visibility</span>
               )}
             </div>
-            <h1 className="font-display text-xl font-bold gold-gradient-text uppercase tracking-[0.15em] whitespace-nowrap">Cílios de Luxo</h1>
+            <h1 className="font-display text-xl font-bold gold-gradient-text uppercase tracking-[0.15em] whitespace-nowrap">{studio.name || 'Cílios de Luxo'}</h1>
           </div>
-          
+
           <nav className="flex items-center gap-6 lg:gap-10">
             <div className="flex gap-6 lg:gap-10">
               {[
@@ -46,11 +46,10 @@ const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate, studi
                 <button
                   key={item.id}
                   onClick={() => onNavigate(item.id)}
-                  className={`text-[10px] uppercase tracking-[0.2em] font-bold transition-all relative py-2 whitespace-nowrap ${
-                    activePage === item.id 
-                      ? 'text-gold-dark dark:text-gold' 
+                  className={`text-[10px] uppercase tracking-[0.2em] font-bold transition-all relative py-2 whitespace-nowrap ${activePage === item.id
+                      ? 'text-gold-dark dark:text-gold'
                       : 'text-stone-500 dark:text-stone-400 hover:text-gold dark:hover:text-gold-light'
-                  }`}
+                    }`}
                 >
                   {item.label}
                   {activePage === item.id && (
@@ -60,8 +59,8 @@ const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate, studi
               ))}
             </div>
 
-            <button 
-              onClick={toggleDarkMode} 
+            <button
+              onClick={toggleDarkMode}
               className="w-9 h-9 rounded-full border border-gold/20 bg-white/50 dark:bg-black/20 flex items-center justify-center text-gold hover:bg-gold/10 transition-all active:scale-95 flex-shrink-0"
               title={darkMode ? "Mudar para tema claro" : "Mudar para tema escuro"}
             >
@@ -75,7 +74,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate, studi
 
       {/* Mobile Dark Mode Toggle (Floating) */}
       {!isSplash && (
-        <button 
+        <button
           onClick={toggleDarkMode}
           className="md:hidden fixed top-6 right-6 z-[90] w-10 h-10 rounded-full bg-white/80 dark:bg-luxury-medium/80 backdrop-blur-md border border-gold/30 flex items-center justify-center text-gold shadow-[0_4px_20px_rgba(0,0,0,0.1)] active:scale-90 transition-all"
         >
@@ -93,7 +92,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activePage, onNavigate, studi
             <OrnamentalSVG className="absolute -bottom-20 -right-20 w-[30rem] h-[30rem] text-gold rotate-[160deg]" />
           </div>
         )}
-        
+
         <div className={`relative z-10 w-full h-full ${isSplash ? '' : 'max-w-7xl mx-auto'}`}>
           {children}
         </div>
