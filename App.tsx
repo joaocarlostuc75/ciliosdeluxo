@@ -87,8 +87,8 @@ const StudioPage: React.FC<{ isAdminView?: boolean; darkMode: boolean; toggleDar
         const fetchProfilePromise = supabase
           .from('profiles')
           .select('*')
-          // FORCE SINGLE TENANT: Always load cílios-de-luxo or the admin's profile
-          .eq(isAdminView ? 'id' : 'slug', isAdminView ? user?.id : 'cilios-de-luxo')
+          // FORCE SINGLE TENANT: Always load 'cilios-de-luxo'
+          .eq('slug', 'cilios-de-luxo')
           .single();
 
         const timeoutPromise = new Promise<null>((_, reject) => {
@@ -265,7 +265,12 @@ const StudioPage: React.FC<{ isAdminView?: boolean; darkMode: boolean; toggleDar
             setServices(prev => prev.map(s => s.id === updatedService.id ? updatedService : s));
           }
         }}
-        onDeleteService={() => { }}
+        onDeleteService={async (id) => {
+          if (!confirm('Tem certeza que deseja excluir este serviço?')) return;
+          const { error } = await supabase.from('services').delete().eq('id', id);
+          if (error) alert('Erro ao excluir serviço.');
+          else setServices(prev => prev.filter(s => s.id !== id));
+        }}
         onAddService={async (newService) => {
           if (!studio.id) return;
           const { data, error } = await supabase.from('services').insert({
@@ -293,9 +298,19 @@ const StudioPage: React.FC<{ isAdminView?: boolean; darkMode: boolean; toggleDar
           }
         }}
         onUpdateAppointment={async (updatedAppt) => {
-          // Placeholder for update appointment logic if needed
+          const { error } = await supabase.from('appointments').update({
+            status: updatedAppt.status
+          }).eq('id', updatedAppt.id);
+
+          if (error) alert('Erro ao atualizar agendamento.');
+          else setAllAppointments(prev => prev.map(a => a.id === updatedAppt.id ? updatedAppt : a));
         }}
-        onDeleteAppointment={() => { }}
+        onDeleteAppointment={async (id) => {
+          if (!confirm('Excluir agendamento permanentemente?')) return;
+          const { error } = await supabase.from('appointments').delete().eq('id', id);
+          if (error) alert('Erro ao excluir agendamento.');
+          else setAllAppointments(prev => prev.filter(a => a.id !== id));
+        }}
         onUpdateClient={async (updatedClient: any) => {
           const { error } = await supabase.from('clients').update({
             name: updatedClient.name,
@@ -318,7 +333,12 @@ const StudioPage: React.FC<{ isAdminView?: boolean; darkMode: boolean; toggleDar
             } : c));
           }
         }}
-        onDeleteClient={() => { }}
+        onDeleteClient={async (id) => {
+          if (!confirm('Excluir cliente?')) return;
+          const { error } = await supabase.from('clients').delete().eq('id', id);
+          if (error) alert('Erro ao excluir cliente.');
+          else setClients(prev => prev.filter(c => c.id !== id));
+        }}
         onAddClient={async (newClient: any) => {
           if (!studio.id) return;
           const { data, error } = await supabase.from('clients').insert({
@@ -344,8 +364,13 @@ const StudioPage: React.FC<{ isAdminView?: boolean; darkMode: boolean; toggleDar
             }]);
           }
         }}
-        onCancelAppointment={() => { }}
-        onRescheduleAppointment={() => { }}
+        onCancelAppointment={async (id) => {
+          if (!confirm('Cancelar agendamento?')) return;
+          const { error } = await supabase.from('appointments').update({ status: 'CANCELLED' }).eq('id', id);
+          if (error) alert('Erro ao cancelar.');
+          else setAllAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'CANCELLED' } : a));
+        }}
+        onRescheduleAppointment={() => { alert('Funcionalidade de reagendamento direto em breve. Por favor, cancele e crie um novo ou edite a data manualmente.'); }}
         onUpdateBusinessHours={async (newHours) => {
           if (!studio.id) return;
           console.log('Salvando horários...', newHours);

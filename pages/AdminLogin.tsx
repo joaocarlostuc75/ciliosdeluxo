@@ -46,7 +46,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
             <span className="material-symbols-outlined text-gold text-4xl">lock</span>
           </div>
           <h2 className="font-display text-4xl font-bold text-stone-900 dark:text-parchment-light italic">Painel do Parceiro</h2>
-          <p className="text-[10px] uppercase tracking-[0.4em] text-gold font-bold mt-2">Acesso Multitenant</p>
+          <p className="text-[10px] uppercase tracking-[0.4em] text-gold font-bold mt-2">Acesso Administrativo</p>
         </header>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -97,7 +97,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onLogin, onBack }) => {
       </div>
 
       <footer className="mt-24 opacity-40 text-[8px] uppercase tracking-widest text-stone-500 dark:text-stone-400 text-center font-bold relative z-10">
-        Plataforma Multi-tenant &copy; 2026 - Gestão Profissional
+        Gestão Profissional &copy; 2026
       </footer>
     </div>
   );

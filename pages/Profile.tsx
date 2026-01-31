@@ -59,6 +59,20 @@ const Profile: React.FC<ProfileProps> = ({
       localStorage.setItem('adminSection', adminSection);
     }
   }, [adminSection, isAdmin]);
+
+  // AUTOSAVE LOGIC
+  useEffect(() => {
+    // Don't autosave if not admin
+    if (!isAdmin || !onUpdateProfile) return;
+
+    const timer = setTimeout(() => {
+      console.log("Autosaving profile...", studio);
+      onUpdateProfile(studio);
+    }, 2000); // 2 seconds debounce
+
+    return () => clearTimeout(timer);
+  }, [studio, isAdmin, onUpdateProfile]);
+
   const [editingServiceId, setEditingServiceId] = useState<string | null>(null);
 
   const [currentPassInput, setCurrentPassInput] = useState('');
@@ -531,8 +545,11 @@ const Profile: React.FC<ProfileProps> = ({
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-4">
-                  <button onClick={() => onUpdateProfile && onUpdateProfile(studio)} className="px-8 py-4 gold-gradient text-white rounded-2xl text-[10px] uppercase font-black shadow-lg">Salvar Perfil</button>
+                <div className="flex justify-between items-center pt-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                    <span className="text-[10px] uppercase font-bold text-stone-400">Salvamento Automático Ativo</span>
+                  </div>
                 </div>
 
                 <div className="mt-8 pt-8 border-t border-gold/10 space-y-6">
