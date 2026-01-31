@@ -187,6 +187,21 @@ const StudioPage: React.FC<{ isAdminView?: boolean; darkMode: boolean; toggleDar
     </div>
   );
 
+  // Booking State
+  const [bookingClient, setBookingClient] = useState<User>({
+    id: '',
+    name: '',    // Initialized empty for user input
+    whatsapp: '', // Initialized empty for user input
+    image: '',
+    email: '',
+    address: '',
+    history: '',
+    mission: '',
+    ownerName: '',
+    businessHours: [],
+    blocks: []
+  });
+
   const renderPage = () => {
     const selectedService = services.find(s => s.id === (selectedServiceId || services[0]?.id)) || null;
     switch (currentPage) {
@@ -197,7 +212,7 @@ const StudioPage: React.FC<{ isAdminView?: boolean; darkMode: boolean; toggleDar
       case Page.PROFILE: return <Profile
         studio={studio}
         setStudio={setStudio}
-        client={{} as any}
+        client={{} as any} // Profile page for admin/existing logic
         setClient={() => { }}
         clients={clients}
         services={services}
@@ -355,7 +370,7 @@ const StudioPage: React.FC<{ isAdminView?: boolean; darkMode: boolean; toggleDar
         onAddBlock={() => { }}
         onDeleteBlock={() => { }}
       />;
-      case Page.CONFIRMATION: return <Confirmation client={{} as any} setClient={() => { }} studioWhatsapp={studio.whatsapp} selectedService={selectedService} selectedDate={selectedDate} selectedTime={selectedTime} onConfirmBooking={async () => { }} checkAvailability={() => true} onFinish={() => setCurrentPage(Page.HOME)} currentMonthName={currentMonthName} currentYear={currentYear} currentMonthIndex={currentMonthIndex} />;
+      case Page.CONFIRMATION: return <Confirmation client={bookingClient} setClient={setBookingClient} studioWhatsapp={studio.whatsapp} selectedService={selectedService} selectedDate={selectedDate} selectedTime={selectedTime} onConfirmBooking={async () => { }} checkAvailability={() => true} onFinish={() => setCurrentPage(Page.HOME)} currentMonthName={currentMonthName} currentYear={currentYear} currentMonthIndex={currentMonthIndex} />;
       default: return <Home services={services} onSelectService={() => { }} studioName={studio.name} />;
     }
   };
